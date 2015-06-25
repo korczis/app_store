@@ -79,9 +79,9 @@ describe GoodData::Bricks::UserFiltersBrick do
       user_process.execute('main.rb', params: {
         'input_source'  => Pathname(tempfile.path).basename.to_s,
         'sync_mode'     => 'sync_project',
-        'filters_config': {
-          'user_column': 'login',
-          'labels': [{ 'label': 'label.things.name', 'column': 'value' }]
+        'filters_config' => {
+          'user_column' => 'login',
+          'labels' => [{ 'label' => 'label.things.name', 'column' => 'value' }]
         }
       })
       expected_data_perms = @users_into_1.map { |u| [u.login, "[Attr.Things.Name] IN ([#{u.login}])"] }
@@ -107,9 +107,9 @@ describe GoodData::Bricks::UserFiltersBrick do
       user_process.execute('main.rb', params: {
         'input_source'  => Pathname(tempfile.path).basename.to_s,
         'sync_mode'     => 'sync_one_project_based_on_pid',
-        'filters_config': {
-          'user_column': 'login',
-          'labels': [{ 'label': 'label.things.name', 'column': 'value' }]
+        'filters_config' => {
+          'user_column' => 'login',
+          'labels' => [{ 'label' => 'label.things.name', 'column' => 'value' }]
         }
       })
 
@@ -137,9 +137,9 @@ describe GoodData::Bricks::UserFiltersBrick do
         result = user_process.execute('main.rb', params: {
           'input_source'  => Pathname(tempfile.path).basename.to_s,
           'sync_mode'     => 'sync_multiple_projects_based_on_pid',
-          'filters_config': {
-            'user_column': 'login',
-            'labels': [{ 'label': 'label.things.name', 'column': 'value' }]
+          'filters_config' => {
+            'user_column' => 'login',
+            'labels' => [{ 'label' => 'label.things.name', 'column' => 'value' }]
           }
         })
       }.to raise_exception
@@ -163,9 +163,9 @@ describe GoodData::Bricks::UserFiltersBrick do
       user_process.execute('main.rb', params: {
         'input_source'  => Pathname(tempfile.path).basename.to_s,
         'sync_mode'     => 'sync_one_project_based_on_custom_id',
-        'filters_config': {
-          'user_column': 'login',
-          'labels': [{ 'label': 'label.things.name', 'column': 'value' }]
+        'filters_config' => {
+          'user_column' => 'login',
+          'labels' => [{ 'label' => 'label.things.name', 'column' => 'value' }]
         }
       })
       data_permissions_in_1 = @project_1.data_permissions.pmap { |p| [p.related.login, p.pretty_expression] }

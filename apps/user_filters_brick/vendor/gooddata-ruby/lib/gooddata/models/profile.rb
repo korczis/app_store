@@ -59,7 +59,7 @@ module GoodData
           fail(ArgumentError, 'wrong type of argument. Should be either project ID or path')
         end
 
-        id = id.match(/[a-zA-Z\d]+$/)[0] if id =~ /\//
+        id = id.match(/[a-zA-Z\d]+$/)[0] if id =~ %r{/}
 
         c = client(opts)
         fail ArgumentError, 'No :client specified' if c.nil?
@@ -323,18 +323,7 @@ module GoodData
           @dirty = false
         end
       end
-      self
     end
-
-    def sso_provider
-      @json['accountSetting']['ssoProvider']
-    end
-
-    def sso_provider=(an_sso_provider)
-      @dirty = true
-      @json['accountSetting']['ssoProvider'] = an_sso_provider
-    end
-    
 
     # Gets the preferred timezone
     #
@@ -381,6 +370,15 @@ module GoodData
 
     def name
       (first_name || '') + (last_name || '')
+    end
+
+    def sso_provider
+      @json['accountSetting']['ssoProvider']
+    end
+
+    def sso_provider=(an_sso_provider)
+      @dirty = true
+      @json['accountSetting']['ssoProvider'] = an_sso_provider
     end
 
     def to_hash
