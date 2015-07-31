@@ -5,5 +5,5 @@ gem 'terminal-table','1.4.5'
 gem 'gooddata'
 gem "gooddata-dss-jdbc",:platform => "jruby"
 gem "gooddata_connectors_base", :path => 'gooddata_connectors_base-s3'
-gem "gooddata_connectors_metadata", :path => "gooddata_connectors_metadata-bds_implementation"
+gem "gooddata_connectors_metadata",'0.0.2', :path => "gooddata_connectors_metadata-0.0.2"
 gem "gooddata_connectors_ads", :path => "gooddata_connectors_ads-0.0.4"

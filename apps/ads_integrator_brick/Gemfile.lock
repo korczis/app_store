@@ -16,9 +16,10 @@ PATH
       gooddata
 
 PATH
-  remote: gooddata_connectors_metadata-bds_implementation
+  remote: gooddata_connectors_metadata-0.0.2
   specs:
-    gooddata_connectors_metadata (0.0.1)
+    gooddata_connectors_metadata (0.0.2)
+      activesupport (= 4.2.3)
       aws-sdk
       gooddata (~> 0.6, >= 0.6.12)
       hashie (~> 3.3, >= 3.3.2)
@@ -122,5 +123,5 @@ DEPENDENCIES
   gooddata-dss-jdbc
   gooddata_connectors_ads!
   gooddata_connectors_base!
-  gooddata_connectors_metadata!
+  gooddata_connectors_metadata (= 0.0.2)!
   terminal-table (= 1.4.5)
