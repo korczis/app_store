@@ -1,5 +1,5 @@
 PATH
-  remote: gooddata_connectors_ads-0.0.3
+  remote: gooddata_connectors_ads-0.0.4
   specs:
     gooddata_connectors_ads (0.0.2)
       erubis
