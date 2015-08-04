@@ -1,10 +1,11 @@
 PATH
   remote: gooddata_connectors_ads-by_reference_architecture
   specs:
-    gooddata_connectors_ads (0.0.2)
+    gooddata_connectors_ads (0.0.5)
       erubis
       gooddata-dss-jdbc
       hashie
+      peach
       sequel
 
 PATH
@@ -69,7 +70,7 @@ GEM
       terminal-table (~> 1.4, >= 1.4.5)
     gooddata-dss-jdbc (0.1.7)
     hashie (3.4.2)
-    highline (1.7.2)
+    highline (1.7.3)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
     i18n (0.7.0)
@@ -83,6 +84,7 @@ GEM
     netrc (0.10.3)
     nokogiri (1.6.6.2-java)
     parseconfig (1.0.6)
+    peach (0.5.1)
     pmap (1.0.2)
     pry (0.9.12.6-java)
       coderay (~> 1.0)
@@ -102,7 +104,7 @@ GEM
     salesforce_bulk_query (0.2.0)
       json (~> 1.8)
       xml-simple (~> 1.1)
-    sequel (4.24.0)
+    sequel (4.25.0)
     slop (3.6.0)
     spoon (0.0.4)
       ffi
