@@ -183,6 +183,7 @@ The following list contains the properties that are useful to specify for updati
 * Password - password (password_column)
 * Email - email (email_column)
 * SSO Provider - sso_provider (sso_provider_column)
+* Project ID - project_id (multiple_projects_column)
 
 For instance, if in your data first names would be stored in a column called "x", you would pass as param something along the lines of
 
