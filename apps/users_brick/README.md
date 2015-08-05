@@ -88,7 +88,7 @@ The process takes a data source synchronizes the organization. That is it.
   	{
   	  "sync_mode": "add_to_organization",
   	  "organization": "organization_name",
-      "data_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" }
+      "inut_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" }
     }
 
 ### Sync project
@@ -106,7 +106,11 @@ The process takes a data source and synchronizes the project. That is it. The us
 ### Sync organization and project in one go
 The process takes a data source synchronizes the organization and then goes forward to synchronize users in the project. The intended usage for this mode is a customer who has one project so there is no benefit in splitting the organization and project synchronization into 2 tasks. You can achieve the same effect by using 2 processes in a series. First syncing the organization and the second syncing the project.
 
-!! Fill in PARAMS
+    {
+      "input_source": { "type": "staging", "path": "users.csv" },
+      "organization": "gooddata-tomas-svarovsky",
+      "whitelists" : ["svarovsky+gem_tester@gooddata.com"]
+    }
 
 ### Sync many projects in one process
 There are occasions where someone is maintaining an application with several projects. There are couple of projects like 10 or so. This mode allows a process to sync those projects all in one go. The file has to contain and additional information about what user should go to which project. The file is partitioned based on this information and each partition is used to sync a give project. The project information has to be provided in a form of Project ID (aka pid, project hash).
@@ -120,7 +124,7 @@ This mode is meant for cases where a person is by hand managing small number of 
 	  {
 	    "sync_mode": "sync_multiple_projects_based_on_pid",
 	    "organization": "organization_name",
-      "data_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" },
+      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" },
       "whitelists" : ["etl_admin@gooddata.com"]
     }
 
