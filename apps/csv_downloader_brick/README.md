@@ -111,6 +111,10 @@ All other types are threaded as string-255
     Facts|1.0|account_id|integer|2
     Facts|1.0|user_id|integer|3
     Facts|1.0|fact1|decimal-20-5|4
+    Facts|1.2|ID|integer|1
+    Facts|1.2|account_id|integer|2
+    Facts|1.2|user_id|integer|3
+    Facts|1.2|fact1|decimal-20-5|4
     Facts|1.2|fact2|decimal-20-5|5
 
 ### Manifest files
