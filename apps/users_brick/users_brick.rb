@@ -27,7 +27,7 @@ module GoodData
         end
 
         whitelists = Set.new(params['whitelists'] || []) + Set.new((params['regexp_whitelists'] || []).map {|r| /#{r}/}) + Set.new([client.user.login])
-        multiple_projects_column = params['multiple_projects_column']
+        multiple_projects_column = params['multiple_projects_column'] || 'project_id'
 
         # Check mandatory columns and parameters
         mandatory_params = [domain_name, data_source]
