@@ -1,3 +1,50 @@
+module GoodData
+  module Rest
+    class Connection
+      def connect(username, password, options = {})
+        server = options[:server] || Helpers::AuthHelper.read_server
+        options = DEFAULT_LOGIN_PAYLOAD.merge(options)
+        headers = options[:headers] || {}
+
+        options = options.merge(headers)
+        options = options.merge({:verify_ssl => OpenSSL::SSL::VERIFY_NONE})
+
+        @server = RestClient::Resource.new server, options
+
+        # Install at_exit handler first
+        unless @at_exit_handler_installed
+          begin
+            at_exit { disconnect if @user }
+          rescue RestClient::Unauthorized
+            GoodData.logger.info 'Already logged out'
+          ensure
+            @at_exit_handler_installed = true
+          end
+        end
+
+        # Reset old cookies first
+        if options[:sst_token]
+          merge_cookies!('GDCAuthSST' => options[:sst_token])
+          @user = get(get('/gdc/app/account/bootstrap')['bootstrapResource']['accountSetting']['links']['self'])
+          @auth = {}
+          refresh_token :dont_reauth => true
+        else
+          credentials = Connection.construct_login_payload(username, password)
+          generate_session_id
+          @auth = post(LOGIN_PATH, credentials)['userLogin']
+
+          refresh_token :dont_reauth => true
+          @user = get(@auth['profile'])
+        end
+      end
+    end
+
+
+  end
+end
+
+
+
 module GoodData::Bricks
 
   class ExecuteBrick < GoodData::Bricks::Brick
@@ -9,8 +56,9 @@ module GoodData::Bricks
       raise Exception,"The parameter WORK_DONE_IDENTIFICATOR need to be filled" if !params.include?("WORK_DONE_IDENTIFICATOR")
       list_of_modes = params["LIST_OF_MODES"].split("|")
       work_done_identificator = params["WORK_DONE_IDENTIFICATOR"]
-      number_of_schedules_in_batch = Integer(params["NUMBER_OF_SCHEDULES_IN_BATCH"]) || 1000
-      delay_between_batches = Integer(params["DELAY_BETWEEN_BATCHES"]) || 0
+      number_of_schedules_in_batch = Integer(params["NUMBER_OF_SCHEDULES_IN_BATCH"] || "1000")
+      delay_between_batches = Integer(params["DELAY_BETWEEN_BATCHES"] || "0")
+
 
       # The WORK_DONE_IDENTIFICATOR is flag which tells the executor to execute the schedules
       # It could have special value IGNORE. In this case all corresponding schedules will be started during every run of this brick
@@ -25,12 +73,16 @@ module GoodData::Bricks
       if (start_schedules)
         schedules_to_start = []
         GoodData::Project.all.each do |project|
-          project.schedules.each do |s|
-            if (s.params.include?("MODE"))
-              if (list_of_modes.include?(s.params["MODE"]))
-                schedules_to_start << {:schedule => s,:project => project}
+          begin
+            project.schedules.each do |s|
+              if (s.params.include?("MODE"))
+                if (list_of_modes.include?(s.params["MODE"]))
+                  schedules_to_start << {:schedule => s,:project => project}
+                end
               end
             end
+          rescue => e
+            logger.warn "The retrieval of project schedules, for project #{project.obj_id} has failed. Message: #{e.message}."
           end
         end
         batch_number = 1
@@ -57,7 +109,9 @@ module GoodData::Bricks
           batch_number += 1
           sleep(delay_between_batches)
         end
-        GoodData.project.set_metadata(work_done_identificator,"false")
+        if (work_done_identificator != "IGNORE")
+          GoodData.project.set_metadata(work_done_identificator,"false")
+        end
       end
     end
   end
@@ -93,3 +147,5 @@ module GoodData::Bricks
 
 
 end
+
+
