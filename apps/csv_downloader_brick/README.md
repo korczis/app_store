@@ -91,8 +91,10 @@ The structure of the file should look like this:
  * decimal(X,Y) - decimal(X,Y),decimal-X-Y,numeric-X-Y
  * decimal(16,10) - numeric
  * boolean - boolean
- * Date without time - date,time-false
- * Date with time - time,time-true,timestamp without time zone
+ * Date without time - date 
+ * Date with time - datetime,timestamp without time zone
+ * Time without date - time 
+ 
 
 All other types are threaded as string-255
 
