@@ -83,16 +83,16 @@ The structure of the file should look like this:
  * **type** - the data type of the field (the supported types are stated at the end of this section)
  * **order** - the order in which the fields are ordered in source files
 
-### Supported types
+### Supported types (case insensitive)
 
- * string(X) - varchar(X),string(X),string-X,
- * string(255) - string,Varchar,varchar
- * integer -integer,bigint
- * decimal(X,Y) - decimal(X,Y),decimal-X-Y,numeric-X-Y
+ * string(X) - varchar(X) or string(X) or string-X,
+ * string(255) - string or varchar
+ * integer - integer or bigint
+ * decimal(X,Y) - decimal(X,Y) or decimal-X-Y or numeric-X-Y
  * decimal(16,10) - numeric
  * boolean - boolean
  * Date without time - date 
- * Date with time - datetime,timestamp without time zone
+ * Date with time - datetime or timestamp without time zone
  * Time without date - time 
  
 
