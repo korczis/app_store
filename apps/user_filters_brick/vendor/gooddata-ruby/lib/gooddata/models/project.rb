@@ -16,6 +16,7 @@ require_relative '../mixins/rest_resource'
 
 require_relative 'process'
 require_relative 'project_role'
+require_relative 'blueprint/blueprint'
 
 module GoodData
   class Project < GoodData::Rest::Resource
@@ -73,7 +74,7 @@ module GoodData
             fail(ArgumentError, 'wrong type of argument. Should be either project ID or path')
           end
 
-          id = id.match(/[a-zA-Z\d]+$/)[0] if id =~ /\//
+          id = id.match(/[a-zA-Z\d]+$/)[0] if id =~ %r{/}
 
           c = client(opts)
           fail ArgumentError, 'No :client specified' if c.nil?
@@ -103,7 +104,7 @@ module GoodData
       # - :template (default /projects/blank)
       #
       def create(opts = { :client => GoodData.connection }, &block)
-        GoodData.logger.warn "Creating project #{opts[:title]}"
+        GoodData.logger.info "Creating project #{opts[:title]}"
 
         c = client(opts)
         fail ArgumentError, 'No :client specified' if c.nil?
@@ -173,6 +174,7 @@ module GoodData
         GoodData::Metric.xcreate(options[:expression], metric.merge(options.merge(default)))
       end
     end
+
     alias_method :create_metric, :add_metric
 
     # Creates new instance of report in context of project
@@ -183,6 +185,7 @@ module GoodData
       rep = GoodData::Report.create(options.merge(client: client, project: self))
       rep.save
     end
+
     alias_method :create_report, :add_report
 
     # Creates new instance of report definition in context of project
@@ -196,6 +199,7 @@ module GoodData
       rd.project = self
       rd.save
     end
+
     alias_method :create_report_definition, :add_report_definition
 
     # Returns an indication whether current user is admin in this project
@@ -213,6 +217,14 @@ module GoodData
       GoodData::Attribute[id, project: self, client: client]
     end
 
+    def attribute_by_identifier(identifier)
+      GoodData::Attribute.find_first_by_identifier(identifier, project: self, client: client)
+    end
+
+    def attributes_by_identifier(identifier)
+      GoodData::Attribute.find_by_identifier(identifier, project: self, client: client)
+    end
+
     def attribute_by_title(title)
       GoodData::Attribute.find_first_by_title(title, project: self, client: client)
     end
@@ -224,11 +236,13 @@ module GoodData
     # Gets project blueprint from the server
     #
     # @return [GoodData::ProjectRole] Project role if found
-    def blueprint
+    def blueprint(options = {})
       result = client.get("/gdc/projects/#{pid}/model/view")
       polling_url = result['asyncTask']['link']['poll']
-      model = client.poll_on_code(polling_url)
-      GoodData::Model::FromWire.from_wire(model)
+      model = client.poll_on_code(polling_url, options)
+      bp = GoodData::Model::FromWire.from_wire(model)
+      bp.title = title
+      bp
     end
 
     # Returns web interface URI of project
@@ -312,7 +326,7 @@ module GoodData
     #
     # @param export_token [String] Export token of the package to be imported
     # @return [Project] current project
-    def import_clone(export_token)
+    def import_clone(export_token, options = {})
       import = {
         :importProject => {
           :token => export_token
@@ -321,7 +335,7 @@ module GoodData
 
       result = client.post("/gdc/md/#{obj_id}/maintenance/import", import)
       status_url = result['uri']
-      client.poll_on_response(status_url) do |body|
+      client.poll_on_response(status_url, options) do |body|
         body['taskState']['status'] == 'RUNNING'
       end
       self
@@ -342,6 +356,7 @@ module GoodData
     def create_variable(data)
       GoodData::Variable.create(data, client: client, project: self)
     end
+
     # Helper for getting dashboards of a project
     #
     # @param id [String | Number | Object] Anything that you can pass to GoodData::Dashboard[id]
@@ -383,12 +398,12 @@ module GoodData
     #
     # @param dml [String] DML expression
     # @return [Hash] Result of executing DML
-    def execute_dml(dml)
+    def execute_dml(dml, options = {})
       uri = "/gdc/md/#{pid}/dml/manage"
       result = client.post(uri, manage: { maql: dml })
       polling_uri = result['uri']
 
-      client.poll_on_response(polling_uri) do |body|
+      client.poll_on_response(polling_uri, options) do |body|
         body && body['taskState'] && body['taskState']['status'] == 'WAIT'
       end
     end
@@ -397,13 +412,13 @@ module GoodData
     #
     # @param maql [String] MAQL expression
     # @return [Hash] Result of executing MAQL
-    def execute_maql(maql)
+    def execute_maql(maql, options = {})
       ldm_links = client.get(md[GoodData::Model::LDM_CTG])
       ldm_uri = Links.new(ldm_links)[GoodData::Model::LDM_MANAGE_CTG]
       response = client.post(ldm_uri, manage: { maql: maql })
       polling_uri = response['entries'].first['link']
 
-      client.poll_on_response(polling_uri) do |body|
+      client.poll_on_response(polling_uri, options) do |body|
         body && body['wTaskStatus'] && body['wTaskStatus']['status'] == 'RUNNING'
       end
     end
@@ -431,8 +446,7 @@ module GoodData
     # Get WebDav directory for project data
     # @return [String]
     def project_webdav_path
-      u = URI(links['uploads'])
-      URI.join(u.to_s.chomp(u.path.to_s), '/project-uploads/', "#{pid}/")
+      client.project_webdav_path(:project => self)
     end
 
     # Gets project role by its identifier
@@ -718,7 +732,7 @@ module GoodData
       polling_url = result['partialMDArtifact']['status']['uri']
       token = result['partialMDArtifact']['token']
 
-      polling_result = client.poll_on_response(polling_url) do |body|
+      polling_result = client.poll_on_response(polling_url, options) do |body|
         body['wTaskStatus'] && body['wTaskStatus']['status'] == 'RUNNING'
       end
 
@@ -735,7 +749,7 @@ module GoodData
       result = client.post("#{target_project.md['maintenance']}/partialmdimport", import_payload)
       polling_url = result['uri']
 
-      client.poll_on_response(polling_url) do |body|
+      client.poll_on_response(polling_url, options) do |body|
         body['wTaskStatus'] && body['wTaskStatus']['status'] == 'RUNNING'
       end
 
@@ -788,6 +802,173 @@ module GoodData
         @json = response
       end
       self
+    end
+
+    DEFAULT_REPLACE_DATE_DIMENSION_OPTIONS = {
+      :old => nil,
+      :new => nil,
+      :purge => false,
+      :dry_run => true,
+      :mapping => {}
+    }
+
+    def replace_date_dimension(opts)
+      fail ArgumentError, 'No :old dimension specified' if opts[:old].nil?
+      fail ArgumentError, 'No :new dimension specified' if opts[:new].nil?
+
+      # Merge with default options
+      opts = DEFAULT_REPLACE_DATE_DIMENSION_OPTIONS.merge(opts)
+
+      get_attribute = lambda do |attr|
+        return attr if attr.is_a?(GoodData::Attribute)
+
+        res = attribute_by_identifier(attr)
+        return res if res
+
+        attribute_by_title(attr)
+      end
+
+      if opts[:old] && opts[:new]
+        fail ArgumentError, 'You specified both :old => :new and :mapping' if opts[:mapping] && !opts[:mapping].empty?
+
+        attrs = attributes_by_title(/\(#{opts[:old]}\)$/)
+
+        attrs.each do |old_attr|
+          new_attr_title = old_attr.title.sub("(#{opts[:old]})", "(#{opts[:new]})")
+          new_attr = attribute_by_title(new_attr_title)
+
+          fail "Unable to find attribute '#{new_attr_title}' in date dimension '#{opts[:new]}'" if new_attr.nil?
+
+          opts[:mapping][old_attr] = new_attr
+        end
+      end
+
+      mufs = user_filters
+
+      # Replaces string anywhere in JSON with another string and returns back new JSON
+      json_replace = lambda do |object, old_uri, new_uri|
+        old_json = JSON.generate(object.json)
+        regexp_replace = Regexp.new(old_uri + '([^0-9])')
+
+        new_json = old_json.gsub(regexp_replace, "#{new_uri}\\1")
+        if old_json != new_json
+          object.json = JSON.parse(new_json)
+          object.save
+        end
+        object
+      end
+
+      # delete old report definitions (only the last version of each report is kept)
+      if opts[:purge]
+        GoodData.logger.info 'Purging old project definitions'
+        reports.peach(&:purge_report_of_unused_definitions!)
+      end
+
+      fail ArgumentError, 'No :mapping specified' if opts[:mapping].nil? || opts[:mapping].empty?
+
+      # Preprocess mapping, do necessary lookup
+      mapping = {}
+      opts[:mapping].each do |k, v|
+        attr_src = get_attribute.call(k)
+        attr_dest = get_attribute.call(v)
+
+        fail ArgumentError, "Unable to find attribute with identifier '#{k}'" if attr_src.nil?
+        fail ArgumentError, "Unable to find attribute with identifier '#{v}'" if attr_dest.nil?
+
+        mapping[attr_src] = attr_dest
+      end
+
+      # Iterate over all date attributes
+      mapping.each do |old_date, new_date|
+        GoodData.logger.info "  replacing date attribute '#{old_date.title}' (#{old_date.uri}) with '#{new_date.title}' (#{new_date.uri})"
+
+        # For each attribute prepare list of labels to replace
+        labels_mapping = {}
+
+        old_date.labels.each do |old_label|
+          new_label_title = old_label.title.sub("(#{opts[:old]})", "(#{opts[:new]})")
+
+          # Go through all labels, label_by_title has some issues
+          new_date.json['attribute']['content']['displayForms'].each do |label_tmp|
+            if label_tmp['meta']['title'] == new_label_title
+              new_label = labels(label_tmp['meta']['uri'])
+              labels_mapping[old_label] = new_label
+            end
+          end
+        end
+
+        # Now we should have all labels for this attribute and its replacement in new date dimension
+        # First fix all affected metrics that are using this attribute
+        dependent = old_date.usedby
+        GoodData.logger.info 'Fixing metrics...'
+        dependent.each do |dependent_object|
+          next if dependent_object['category'] != 'metric'
+
+          affected_metric = metrics(dependent_object['link'])
+
+          GoodData.logger.info "Metric '#{dependent_object['title']}' (#{affected_metric.uri}) contains old date attribute '#{old_date.title}' ...replacing"
+          affected_metric.replace(old_date.uri, new_date.uri)
+          affected_metric.save unless opts[:dry_run]
+        end
+
+        # Then search which reports are still using this attribute after replacement in metric...
+        dependent = old_date.usedby
+        GoodData.logger.info 'Fixing reports (standard)...'
+        dependent.each do |dependent_object|
+          # This does not seem to work every time... some references are kept...
+          next if dependent_object['category'] != 'reportDefinition'
+
+          affected_rd = report_definitions(dependent_object['link'])
+
+          GoodData.logger.info "reportDefinition (#{affected_rd.uri}) contains old date attribute '#{old_date.title}' ...replacing"
+          affected_rd.replace(old_date.uri, new_date.uri)
+
+          # Affected_rd.replace(labels_mapping) #not sure if this is working correctly, try to do it one by one
+          labels_mapping.each_pair do |old_label, new_label|
+            affected_rd.replace(old_label.uri, new_label.uri)
+          end
+
+          affected_rd.save unless opts[:dry_run]
+        end
+
+        # Then search which dashboards and reports are still using this attribute after standard replacement in reports...
+        dependent = old_date.usedby
+        GoodData.logger.info 'Fixing reports (force) & dashboards...'
+
+        # If standard replace did not work, use force...
+        dependent.each do |dependent_object|
+          case dependent_object['category']
+          when 'reportDefinition'
+            affected_rd = report_definitions(dependent_object['link'])
+
+            GoodData.logger.info "reportDefinition '#{affected_rd.title}' (#{affected_rd.uri}) still contains old date attribute '#{old_date.title}' ...replacing by force"
+            json_replace.call(affected_rd, old_date.uri, new_date.uri)
+
+            # Iterate over all labels
+            labels_mapping.each_pair do |old_label, new_label|
+              json_replace.call(affected_rd, old_label.uri, new_label.uri)
+            end
+
+            affected_rd.save unless opts[:dry_run]
+          when 'projectDashboard'
+            affected_dashboard = dashboards(dependent_object['link'])
+
+            GoodData.logger.info "Dashboard '#{affected_dashboard.title}' (#{affected_dashboard.uri}) contains old date attribute '#{old_date.title}' ...replacing by force"
+            json_replace.call(affected_dashboard, old_date.uri, new_date.uri)
+
+            # Iterate over all labels
+            labels_mapping.each_pair do |old_label, new_label|
+              json_replace.call(affected_dashboard, old_label.uri, new_label.uri)
+            end
+
+            affected_dashboard.save unless opts[:dry_run]
+          end
+        end
+
+        mufs.each do |muf|
+          json_replace.call(muf, old_date.uri, new_date.uri)
+        end
+      end
     end
 
     # Helper for getting reports of a project
@@ -880,15 +1061,28 @@ module GoodData
     #
     # @param file File to be uploaded
     # @param schema Schema to be used
-    def upload(file, dataset_blueprint, mode = 'FULL')
-      dataset_blueprint.upload file, self, mode
+    def upload(data, blueprint, dataset_name, options = {})
+      GoodData::Model.upload_data(data, blueprint, dataset_name, options.merge(client: client, project: self))
     end
 
     def uri
       data['links']['self'] if data && data['links'] && data['links']['self']
     end
 
+    # List of user filters within this project
+    #
+    # @return [Array<GoodData::MandatoryUserFilter>] List of mandatory user
+    def user_filters
+      url = "/gdc/md/#{pid}/userfilters"
+
+      tmp = client.get(url)
+      tmp['userFilters']['items'].pmap do |filter|
+        client.create(GoodData::MandatoryUserFilter, filter, project: self)
+      end
+    end
+
     # List of users in project
+    #
     #
     # @return [Array<GoodData::User>] List of users
     def users(opts = { offset: 0, limit: 1_000 })
@@ -952,7 +1146,7 @@ module GoodData
           role = get_role(r, role_list)
           role && role.uri
         end
-        u[:status] = "ENABLED"
+        u[:status] = 'ENABLED'
         u
       end
 
@@ -969,7 +1163,7 @@ module GoodData
       end
       # This is only creating users that were not in the proejcts so far. This means this will reach into domain
       GoodData.logger.warn("Creating #{diff[:added].count} users in project (#{pid})")
-      results.concat create_users(u, roles: role_list, domain: domain, project_users: whitelisted_users, only_domain: true )
+      results.concat create_users(u, roles: role_list, domain: domain, project_users: whitelisted_users, only_domain: true)
 
       # # Update existing users
       GoodData.logger.warn("Updating #{diff[:changed].count} users in project (#{pid})")
@@ -977,7 +1171,7 @@ module GoodData
       results.concat(set_users_roles(list, roles: role_list, project_users: whitelisted_users))
 
       # Remove old users
-      to_remove = diff[:removed].reject {|u| u[:status] == 'DISABLED' || u[:status] == :disabled }
+      to_remove = diff[:removed].reject { |user| user[:status] == 'DISABLED' || user[:status] == :disabled }
       GoodData.logger.warn("Removing #{to_remove.count} users in project (#{pid})")
       results.concat(disable_users(to_remove))
       results
@@ -991,7 +1185,7 @@ module GoodData
       end
       payloads.each_slice(100).mapcat do |payload|
         result = client.post(url, 'users' => payload)
-        result['projectUsersUpdateResult'].mapcat {|k, v| v.map {|x| {type: k.to_sym, uri: x}}}
+        result['projectUsersUpdateResult'].mapcat { |k, v| v.map { |x| { type: k.to_sym, uri: x } } }
       end
     end
 
@@ -1043,15 +1237,15 @@ module GoodData
       project_users = options[:project_users] || users
       domain = options[:domain] && client.domain(options[:domain])
       domain_users = if domain.nil?
-        options[:domain_users]
-      else
-        if options[:only_domain] && list.count < 100
-          list.map {|l| domain.find_user_by_login(l[:user][:login])}
-        else
-          domain.users
-        end
-      end
-      
+                       options[:domain_users]
+                     else
+                       if options[:only_domain] && list.count < 100
+                         list.map { |l| domain.find_user_by_login(l[:user][:login]) }
+                       else
+                         domain.users
+                       end
+                     end
+
       users_to_add = list.flat_map do |user_hash|
         user = user_hash[:user] || user_hash[:login]
         desired_roles = user_hash[:role] || user_hash[:roles] || 'readOnlyUser'
@@ -1088,10 +1282,10 @@ module GoodData
     # metric_filter - Checks metadata for inconsistent metric filters.
     # invalid_objects - Checks metadata for invalid/corrupted objects.
     # asyncTask response
-    def validate(filters = %w(ldm pdm metric_filter invalid_objects))
+    def validate(filters = %w(ldm pdm metric_filter invalid_objects), options = {})
       response = client.post "#{md['validate-project']}", 'validateProject' => filters
       polling_link = response['asyncTask']['link']['poll']
-      client.poll_on_response(polling_link) do |body|
+      client.poll_on_response(polling_link, options) do |body|
         body['wTaskStatus'] && body['wTaskStatus']['status'] == 'RUNNING'
       end
     end
