@@ -100,7 +100,7 @@ There are some special configurations possible for the Salesforce downloader on 
 
 ### Example
  
-   "Account": {
+    "Account": {
       "global": {
         "custom": {
           "hub": ["Id"],
@@ -112,7 +112,7 @@ There are some special configurations possible for the Salesforce downloader on 
 
 In this example, the Salesforce downloader will download the Account entity from Salesforce. It will download all the fields except of (Description, Other_Address__c). The field use as timestamp for incremenetal download is SystemModstamp and the primary key for then entity is field Id.   
  
-   "Account": {
+    "Account": {
       "global": {
         "fields":["Id","SystemModstamp"]
         "custom": {
