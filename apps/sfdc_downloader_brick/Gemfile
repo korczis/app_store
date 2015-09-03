@@ -6,5 +6,5 @@ gem 'terminal-table','1.4.5'
 gem "gooddata-dss-jdbc",:platform => "jruby"
 gem "gooddata_connectors_base", :path => 'gooddata_connectors_base-s3'
 gem "gooddata_connectors_metadata", :path => "gooddata_connectors_metadata-bds_implementation"
-gem "salesforce_bulk_query",:git => "https://github.com/gooddata/salesforce_bulk_query"
+gem "salesforce_bulk_query",:path => "salesforce_bulk_query-master"
 gem "gooddata_connectors_downloader_salesforce", :path => "gooddata_connectors_downloader_salesforce-gse"

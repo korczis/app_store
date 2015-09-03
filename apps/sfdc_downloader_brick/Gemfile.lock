@@ -1,11 +1,3 @@
-GIT
-  remote: https://github.com/gooddata/salesforce_bulk_query
-  revision: 944c3eaec701c5e779180f97d8058bbc34f758d1
-  specs:
-    salesforce_bulk_query (0.2.0)
-      json (~> 1.8)
-      xml-simple (~> 1.1)
-
 PATH
   remote: gooddata_connectors_base-s3
   specs:
@@ -29,6 +21,13 @@ PATH
       aws-sdk
       gooddata (~> 0.6, >= 0.6.12)
       hashie (~> 3.3, >= 3.3.2)
+
+PATH
+  remote: salesforce_bulk_query-master
+  specs:
+    salesforce_bulk_query (0.2.0)
+      json (~> 1.8)
+      xml-simple (~> 1.1)
 
 GEM
   remote: https://rubygems.org/
