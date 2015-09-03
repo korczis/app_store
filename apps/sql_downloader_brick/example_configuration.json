@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "TableA": {
+      "global": {
+        "custom": {
+          "hub": [
+            "clustered_key_1",
+            "clustered_key_2"
+          ]
+        }
+      }
+    },
+    "TableB": {
+      "global": {
+        "custom": {
+          "hub": [
+            "clustered_key_1",
+            "clustered_key_2"
+          ]
+        }
+      }
+    },
+    "TableC":{
+      "global": {
+        "custom": {
+          "hub": [
+            "Id"
+          ]
+        }
+      }
+    },
+    "TableD":{
+      "global": {
+        "custom": {
+          "hub": [
+            "Id"
+          ]
+        }
+      }
+    }
+  },
+  "downloaders": {
+    "sql_downloader_1": {
+      "type": "sql",
+      "entities": [
+        "TableA",
+        "TableB",
+        "TableC"
+      ]
+    },
+    "sql_downloader_2": {
+      "type": "sql",
+      "entities": [
+        "TableD"
+      ]
+    }
+  },
+  "integrators": {
+    "ads_integrator_1": {
+      "type": "ads_storage"
+    }
+  },
+  "ads_storage": {
+    "instance_id": "instance_id",
+    "username": "username",
+    "password": "don't put it here, user the propagation from GD schedule (ads_storage|password)",
+    "options":{
+      "default_strategy": "merge"
+    }
+  },
+  "sql": {
+    "type": "MsSql",
+    "options": {
+      "connection":{
+        "server": "server",
+        "database": "database",
+        "username": "username",
+        "password":"don't put it here, user the propagation from GD schedule (sql|options|connection|password)"
+      }
+    }
+  }
+}
