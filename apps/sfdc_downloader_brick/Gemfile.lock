@@ -1,3 +1,11 @@
+GIT
+  remote: https://github.com/gooddata/salesforce_bulk_query
+  revision: 944c3eaec701c5e779180f97d8058bbc34f758d1
+  specs:
+    salesforce_bulk_query (0.2.0)
+      json (~> 1.8)
+      xml-simple (~> 1.1)
+
 PATH
   remote: gooddata_connectors_base-s3
   specs:
@@ -25,15 +33,15 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (4.2.3)
+    activesupport (4.2.4)
       i18n (~> 0.7)
       json (~> 1.7, >= 1.7.7)
       minitest (~> 5.1)
       thread_safe (~> 0.3, >= 0.3.4)
       tzinfo (~> 1.1)
-    aws-sdk (1.64.0)
-      aws-sdk-v1 (= 1.64.0)
-    aws-sdk-v1 (1.64.0)
+    aws-sdk (1.65.0)
+      aws-sdk-v1 (= 1.65.0)
+    aws-sdk-v1 (1.65.0)
       json (~> 1.4)
       nokogiri (>= 1.4.4)
     coderay (1.1.0)
@@ -46,7 +54,7 @@ GEM
     faraday_middleware (0.10.0)
       faraday (>= 0.7.4, < 0.10)
     ffi (1.9.3-java)
-    gli (2.13.1)
+    gli (2.13.2)
     gooddata (0.6.18)
       activesupport (~> 4.1, >= 4.1.0)
       aws-sdk (~> 1.45)
@@ -68,7 +76,7 @@ GEM
       terminal-table (~> 1.4, >= 1.4.5)
     gooddata-dss-jdbc (0.1.7)
     hashie (3.4.2)
-    highline (1.7.2)
+    highline (1.7.3)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
     i18n (0.7.0)
@@ -76,7 +84,7 @@ GEM
     json_pure (1.8.2)
     method_source (0.8.2)
     mime-types (2.6.1)
-    minitest (5.7.0)
+    minitest (5.8.0)
     multi_json (1.11.2)
     multipart-post (2.0.0)
     netrc (0.10.3)
@@ -98,9 +106,6 @@ GEM
       hashie (>= 1.2.0, < 4.0)
       json (>= 1.7.5, < 1.9.0)
     rubyzip (1.1.7)
-    salesforce_bulk_query (0.2.0)
-      json (~> 1.8)
-      xml-simple (~> 1.1)
     slop (3.6.0)
     spoon (0.0.4)
       ffi
@@ -121,4 +126,5 @@ DEPENDENCIES
   gooddata_connectors_base!
   gooddata_connectors_downloader_salesforce!
   gooddata_connectors_metadata!
+  salesforce_bulk_query!
   terminal-table (= 1.4.5)
