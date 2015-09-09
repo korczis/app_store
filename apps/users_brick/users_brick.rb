@@ -2,6 +2,7 @@
 
 require 'open-uri'
 require 'csv'
+require 'terminal-table'
 require 'gooddata'
 
 module GoodData
@@ -119,11 +120,13 @@ module GoodData
         counts.each do |category, count|
           puts "There were #{count} events of type #{category}"
         end
-        errors = results.select { |r| r[:type] == :error }
+        errors = results.select { |r| r[:type] == :failed }
+        headers = errors.flat_map { |e| e.keys }.uniq
         return if errors.empty?
-
-        pp errors.take(10)
-        fail 'There was an error syncing users'
+        table = Terminal::Table.new :headings => headers , :rows => errors.take(25).map { |e| e.values_at(*headers) }
+        puts "\n#{table.to_s}"
+        # pp errors.take(10)
+        fail 'There was an error syncing users.'
       end
     end
   end

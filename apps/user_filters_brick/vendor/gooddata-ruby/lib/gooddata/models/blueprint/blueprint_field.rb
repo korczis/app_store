@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 module GoodData
   module Model
@@ -10,7 +14,7 @@ module GoodData
       end
 
       def initialize(data, dataset)
-        @data = data.symbolize_keys
+        @data = GoodData::Helpers.symbolize_keys(data)
         @data[:type] = @data[:type].to_sym
         @dataset_blueprint = dataset
       end
@@ -39,7 +43,7 @@ module GoodData
       end
 
       def title
-        @data[:title] || @data[:id].titleize
+        @data[:title] || GoodData::Helpers.titleize(@data[:id])
       end
 
       # Validates the fields in the field

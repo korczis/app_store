@@ -61,8 +61,8 @@ describe GoodData::Bricks::UserFiltersBrick do
   end
 
   after(:all) do
-    # @project_1 && @project_1.delete
-    # @project_2 && @project_2.delete
+    @project_1 && @project_1.delete
+    @project_2 && @project_2.delete
   end
 
   it 'should be able to add filters to existing users' do
@@ -76,6 +76,7 @@ describe GoodData::Bricks::UserFiltersBrick do
       end
       @project_1.upload_file(tempfile.path)
       user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/user_filters_brick', name: 'user_filters_brick_example', type: :ruby)
+      binding.pry
       user_process.execute('main.rb', params: {
         'input_source'  => Pathname(tempfile.path).basename.to_s,
         'sync_mode'     => 'sync_project',
@@ -93,6 +94,33 @@ describe GoodData::Bricks::UserFiltersBrick do
     end
   end
 
+  it 'should fail when we add filters to nonexisting users' do
+    begin
+      tempfile = Tempfile.new('filters_sync')
+      CSV.open(tempfile.path, 'w') do |csv|
+        csv << [:login, :value]
+        @users_into_1.each do |u|
+          csv << ['missing_john_doe@gooddata.com', u.login]
+        end
+      end
+      @project_1.upload_file(tempfile.path)
+      user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/user_filters_brick', name: 'user_filters_brick_example', type: :ruby)
+      binding.pry
+      expect do
+        user_process.execute('main.rb', params: {
+          'input_source'  => Pathname(tempfile.path).basename.to_s,
+          'sync_mode'     => 'sync_project',
+          'filters_config' => {
+            'user_column' => 'login',
+            'labels' => [{ 'label' => 'label.things.name', 'column' => 'value' }]
+          }
+        })
+      end.to raise_error(RuntimeError)
+    ensure
+      tempfile.unlink
+    end
+  end
+
   it 'should sync one project based on PID' do
     begin
       tempfile = Tempfile.new('filters_sync')
@@ -104,6 +132,7 @@ describe GoodData::Bricks::UserFiltersBrick do
       end
       @project_1.upload_file(tempfile.path)
       user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/user_filters_brick', name: 'user_filters_brick_example', type: :ruby)
+      binding.pry
       user_process.execute('main.rb', params: {
         'input_source'  => Pathname(tempfile.path).basename.to_s,
         'sync_mode'     => 'sync_one_project_based_on_pid',
@@ -112,7 +141,7 @@ describe GoodData::Bricks::UserFiltersBrick do
           'labels' => [{ 'label' => 'label.things.name', 'column' => 'value' }]
         }
       })
-
+      
       data_permissions = @project_1.data_permissions.pmap { |p| [p.related.login, p.pretty_expression] }
       expect(@expected_data_perms_in_1.to_set).to eq data_permissions.to_set
       expect(@expected_data_perms_in_2.to_set - data_permissions.to_set).to eq @expected_data_perms_in_2.to_set
@@ -143,7 +172,6 @@ describe GoodData::Bricks::UserFiltersBrick do
           }
         })
       }.to raise_exception
-      binding.pry
     ensure
       tempfile.unlink
     end
@@ -160,6 +188,7 @@ describe GoodData::Bricks::UserFiltersBrick do
       end
       @project_1.upload_file(tempfile.path)
       user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/user_filters_brick', name: 'user_filters_brick_example', type: :ruby)
+      binding.pry
       user_process.execute('main.rb', params: {
         'input_source'  => Pathname(tempfile.path).basename.to_s,
         'sync_mode'     => 'sync_one_project_based_on_custom_id',
@@ -168,6 +197,7 @@ describe GoodData::Bricks::UserFiltersBrick do
           'labels' => [{ 'label' => 'label.things.name', 'column' => 'value' }]
         }
       })
+      
       data_permissions_in_1 = @project_1.data_permissions.pmap { |p| [p.related.login, p.pretty_expression] }
       expect(@expected_data_perms_in_1.to_set).to eq data_permissions_in_1.to_set
       expect(@expected_data_perms_in_2.to_set - data_permissions_in_1.to_set).to eq @expected_data_perms_in_2.to_set

@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 
 require 'gooddata/models/profile'
@@ -60,10 +64,6 @@ describe GoodData::Profile do
   after(:all) do
     @client.disconnect
   end
-
-  # def deep_dup(obj)
-  #   Marshal.load(Marshal.dump(obj))
-  # end
 
   describe '#[]' do
     it 'Finds the profile by URL' do
@@ -177,7 +177,7 @@ describe GoodData::Profile do
       ]
   
       l2 = [
-        GoodData::Profile.new(@users[0].json.deep_dup)
+        GoodData::Profile.new(GoodData::Helpers.deep_dup(@users[0].json))
       ]
       l2[0].first_name = 'Peter'
   

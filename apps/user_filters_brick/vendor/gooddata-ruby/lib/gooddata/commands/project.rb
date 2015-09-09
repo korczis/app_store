@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'pathname'
 
@@ -92,7 +96,7 @@ module GoodData
           client = opts[:client]
           fail ArgumentError, 'No :client specified' if client.nil?
 
-          GoodData::Model::ProjectCreator.migrate(:spec => opts[:spec], :token => opts[:token], :client => client)
+          GoodData::Model::ProjectCreator.migrate(opts.merge(:client => client))
         end
 
         # Performs project validation
@@ -125,7 +129,7 @@ module GoodData
                 fail ArgumentError, 'Wrong project specified' if project.nil?
 
                 puts "Use 'exit' to quit the live session. Use 'q' to jump out of displaying a large output."
-                binding.pry(:quiet => true,
+                binding.pry(:quiet => true, # rubocop:disable Lint/Debugger
                             :prompt => [proc do |_target_self, _nest_level, _pry|
                               'project_live_session: '
                             end])

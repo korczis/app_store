@@ -1,3 +1,9 @@
+# encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
 require 'gooddata'
 
 describe "Full project implementation", :constraint => 'slow' do
@@ -8,11 +14,7 @@ describe "Full project implementation", :constraint => 'slow' do
     @blueprint = GoodData::Model::ProjectBlueprint.new(@spec)
     @invalid_blueprint = GoodData::Model::ProjectBlueprint.new(@invalid_spec)
 
-    begin
-      @project = @client.create_project_from_blueprint(@blueprint, auth_token: ConnectionHelper::GD_PROJECT_TOKEN)
-    rescue => e
-      puts e.inspect
-    end
+    @project = @client.create_project_from_blueprint(@blueprint, token: ConnectionHelper::GD_PROJECT_TOKEN, environment: ProjectHelper::ENVIRONMENT)
   end
 
   after(:all) do
@@ -23,7 +25,7 @@ describe "Full project implementation", :constraint => 'slow' do
 
   it "should not build an invalid model" do
     expect {
-      @client.create_project_from_blueprint(@invalid_spec, auth_token: ConnectionHelper::GD_PROJECT_TOKEN)
+      @client.create_project_from_blueprint(@invalid_spec, auth_token: ConnectionHelper::GD_PROJECT_TOKEN, environment: ProjectHelper::ENVIRONMENT)
     }.to raise_error(GoodData::ValidationError)
   end
 
@@ -197,11 +199,11 @@ describe "Full project implementation", :constraint => 'slow' do
     metric = @project.create_metric("SELECT SUM(#\"#{f.title}\")", :title => "My metric")
     metric.save
     result = @project.compute_report(:top => [metric], :left => ['label.devs.dev_id.email'])
-    expect(result[1][1]).to eq 3
+    expect(result[2][1]).to eq 3
     expect(result.include_row?(["jirka@gooddata.com", 5])).to be true
 
     result2 = @project.compute_report(:top => [metric], :left => ['label.devs.dev_id.email'])
-    expect(result2[1][1]).to eq 3
+    expect(result2[2][1]).to eq 3
     expect(result2.include_row?(["jirka@gooddata.com", 5])).to eq true
     expect(result2).to eq result
   end
@@ -258,14 +260,40 @@ describe "Full project implementation", :constraint => 'slow' do
     m.delete
   end
 
+  it "should be able to update report definition (update existing)" do
+    m = @project.metrics.first
+    r = @project.create_report(top: [m], title: 'xy')
+
+    latest_uri = r.definition_uri
+    new_def = r.update_definition do |definition|
+      definition.title = "Test TITLE: #{DateTime.now.strftime}"
+    end
+
+    expect(r.definition_uri).to eq new_def.uri
+    expect(r.definition_uri).to_not eq latest_uri
+  end
+
+  it "should be able to update report definition (create new)" do
+    m = @project.metrics.first
+    r = @project.create_report(top: [m], title: 'xy')
+
+    latest_uri = r.definition_uri
+    new_def = r.update_definition(:new_definition => false) do |definition|
+      definition.title = "Test TITLE: #{DateTime.now.strftime}"
+    end
+
+    expect(r.definition_uri).to eq new_def.uri
+    expect(r.definition_uri).to eq latest_uri
+  end
+
   it "should be possible to get all metrics" do
     metrics1 = @project.metrics
     expect(metrics1.count).to be >= 0
   end
 
   it "should be possible to get all metrics with full objects" do
-    metrics1 = @project.metrics(:all, full: false)
-    expect(metrics1.first.class).to be Hash
+    metrics = @project.metrics(:all)
+    expect(metrics.first.class).to be GoodData::Metric
   end
 
   it "should be able to get a metric by identifier" do
@@ -416,7 +444,7 @@ describe "Full project implementation", :constraint => 'slow' do
     attribute = @project.attributes('attr.devs.dev_id')
     label = attribute.primary_label
     value = label.values.first
-    different_value = label.values[1]
+    different_value = label.values.drop(1).first
     fact = @project.facts('fact.commits.lines_changed')
     metric = @project.create_metric("SELECT SUM([#{fact.uri}]) WHERE [#{attribute.uri}] = [#{value[:uri]}]")
     metric.replace_value(label, value[:value], different_value[:value])
@@ -476,17 +504,39 @@ describe "Full project implementation", :constraint => 'slow' do
     expect(m_cloned.execute).to eq cloned.execute
   end
 
-  it "should be able to clone a project" do
-    title = 'My new clone proejct'
-    cloned_project = @project.clone(title: title, auth_token: ConnectionHelper::GD_PROJECT_TOKEN)
-    expect(cloned_project.title).to eq title
-    expect(cloned_project.facts.first.create_metric.execute).to eq 9
-    cloned_project.delete
+  it "should be able to clone a project and transfer the data" do
+    title = 'My new clone project'
+    begin
+      cloned_project = @project.clone(title: title, auth_token: ConnectionHelper::GD_PROJECT_TOKEN, environment: ProjectHelper::ENVIRONMENT)
+      expect(cloned_project.title).to eq title
+      expect(cloned_project.facts.first.create_metric.execute).to eq 9
+      m = @project.facts.first.create_metric
+      m.identifier = 'metric.cloned_metric'
+      m.save
+
+      result = @project.transfer_objects(m, project: cloned_project)
+      expect(result).to be_truthy
+      cloned_metric = cloned_project.metrics('metric.cloned_metric')
+      expect(cloned_metric).not_to be_nil
+
+      cloned_metric.delete
+      cloned_metric = cloned_project.metrics('metric.cloned_metric')
+      expect(cloned_metric).to be_nil
+
+      result = @project.transfer_objects(m, project: [cloned_project], batch_size: 1)
+      expect(result).to eq [{project: cloned_project, result: true}]
+
+      # should work with pids
+      result = @project.transfer_objects(m, project: [cloned_project.pid], batch_size: 1)
+      expect(result.first[:result]).to be_truthy
+    ensure    
+      cloned_project.delete
+    end
   end
 
   it "should be able to clone a project without data" do
     title = 'My new clone project'
-    cloned_project = @project.clone(title: title, auth_token: ConnectionHelper::GD_PROJECT_TOKEN, data: false)
+    cloned_project = @project.clone(title: title, auth_token: ConnectionHelper::GD_PROJECT_TOKEN, environment: ProjectHelper::ENVIRONMENT, data: false)
     expect(cloned_project.title).to eq title
     expect(cloned_project.facts.first.create_metric.execute).to eq nil
     cloned_project.delete
@@ -510,7 +560,7 @@ describe "Full project implementation", :constraint => 'slow' do
     expect { def_uris.each {|uri| @client.get(uri)} }.to raise_error(RestClient::ResourceNotFound)
   end
 
-  it 'should be apossible to delete data from a dataset' do
+  it 'should be possible to delete data from a dataset' do
     dataset = @project.datasets('dataset.devs')
     expect(dataset.attributes.first.create_metric.execute).to be > 0
     dataset.delete_data

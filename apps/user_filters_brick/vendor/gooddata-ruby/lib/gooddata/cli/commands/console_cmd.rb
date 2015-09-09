@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'pp'
 
@@ -25,7 +29,7 @@ GoodData::CLI.module_eval do
         fail ArgumentError, 'Wrong project specified' if project.nil?
 
         puts "Use 'exit' to quit the live session. Use 'q' to jump out of displaying a large output."
-        binding.pry(:quiet => true,
+        binding.pry(:quiet => true, # rubocop:disable Lint/Debugger
                     :prompt => [proc do |_target_self, _nest_level, _pry|
                       'sdk_live_session: '
                     end])

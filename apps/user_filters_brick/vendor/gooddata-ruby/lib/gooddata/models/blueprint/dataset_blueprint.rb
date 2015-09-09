@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require_relative 'schema_builder'
 require_relative 'schema_blueprint'
@@ -243,7 +247,7 @@ module GoodData
       #
       # @return [GoodData::Model::DatasetBlueprint] matching fields
       def dup
-        DatasetBlueprint.new(data.deep_dup, project_blueprint)
+        DatasetBlueprint.new(GoodData::Helpers.deep_dup(data), project_blueprint)
       end
 
       # Returns facts of a dataset
@@ -367,10 +371,12 @@ module GoodData
         identifiers = facts.map { |f| identifier_for(f) }
         identifiers.zip(facts).map do |id, fact|
           Metric.xcreate(
-            :title => fact[:name].titleize,
+            :title => GoodData::Helpers.titleize(fact[:name]),
             :expression => "SELECT SUM(![#{id}])")
         end
       end
+
+      alias_method :suggest_measures, :suggest_metrics
 
       def to_blueprint
         GoodData::Model::ProjectBlueprint.new(datasets: [to_hash])

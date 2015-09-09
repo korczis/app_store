@@ -1,11 +1,17 @@
+# encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
 require 'gooddata'
 
-describe "Variables implementation", :constraint => 'slow' do
+describe "Over-To data permissions implementation", :constraint => 'slow' do
   before(:all) do
     @spec = JSON.parse(File.read("./spec/data/blueprints/m_n_model.json"), :symbolize_names => true)
     @client = ConnectionHelper::create_default_connection
     @blueprint = GoodData::Model::ProjectBlueprint.new(@spec)
-    @project = @client.create_project_from_blueprint(@blueprint, :auth_token => ConnectionHelper::GD_PROJECT_TOKEN)
+    @project = @client.create_project_from_blueprint(@blueprint, :token => ConnectionHelper::GD_PROJECT_TOKEN, environment: ProjectHelper::ENVIRONMENT)
     @domain = @client.domain(ConnectionHelper::DEFAULT_DOMAIN)
     @label = @project.attributes('attr.permission.id').label_by_name('label.permission.id.email')
 

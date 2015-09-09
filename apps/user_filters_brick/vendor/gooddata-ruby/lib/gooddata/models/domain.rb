@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'cgi'
 
@@ -183,26 +187,26 @@ module GoodData
       # @option opts [Number] :limit From address
       # TODO: Review opts[:limit] functionality
       def users(domain, id = :all, opts = {})
-        c = client(opts)
-        domain = c.domain(domain)
+        client = client(opts)
+        domain = client.domain(domain)
         if id == :all
           GoodData.logger.warn("Retrieving all users from domain #{domain.name}")
-          result = []
-          page_limit = opts[:page_limit] || 1000
-          limit = opts[:limit] || Float::INFINITY
-          offset = opts[:offset] || 0
-          uri = "#{domain.uri}/users?offset=#{offset}&limit=#{page_limit}"
-          loop do
-            tmp = client(opts).get(uri)
-            tmp['accountSettings']['items'].each do |account|
-              result << client(opts).create(GoodData::Profile, account)
-            end
-            break if result.length >= limit
+          Enumerator.new do |y|
+            page_limit = opts[:page_limit] || 1000
+            offset = opts[:offset] || 0
+            loop do
+              begin
+                tmp = client(opts).get("#{domain.uri}/users", params: { offset: offset, limit: page_limit })
+              end
 
-            uri = tmp['accountSettings']['paging']['next']
-            break unless uri
+              tmp['accountSettings']['items'].each do |user_data|
+                user = client.create(GoodData::Profile, user_data)
+                y << user if user
+              end
+              break if tmp['accountSettings']['items'].count < page_limit
+              offset += page_limit
+            end
           end
-          result
         else
           find_user_by_login(domain, id)
         end
@@ -216,23 +220,25 @@ module GoodData
         default_domain_name = default_domain.respond_to?(:name) ? default_domain.name : default_domain
         domain = client.domain(default_domain_name)
 
+        # Prepare cache for domain users
         domain_users_cache = Hash[domain.users.map { |u| [u.login, u] }]
+
         list.pmapcat do |user|
           begin
             user_data = user.to_hash
             domain_user = domain_users_cache[user_data[:login]]
             if !domain_user
               added_user = domain.add_user(user_data, opts)
-              [{ type: :user_added_to_domain, user: added_user }]
+              [{ type: :successful, :action => :user_added_to_domain, user: added_user }]
             else
               fields_to_check = opts[:fields_to_check] || user_data.keys
               diff = GoodData::Helpers.diff([domain_user.to_hash], [user_data], key: :login, fields: fields_to_check)
               next [] if diff[:changed].empty?
               updated_user = domain.update_user(domain_user.to_hash.merge(user_data.compact), opts)
-              [{ type: :user_changed_in_domain, user: updated_user }]
+              [{ type: :successful, :action => :user_changed_in_domain, user: updated_user }]
             end
           rescue RuntimeError => e
-            [{ type: :error, reason: e }]
+            [{ type: :failed, :user => user, message: e }]
           end
         end
       end

@@ -60,7 +60,7 @@ describe GoodData::Bricks::UsersBrick do
     it 'should be able to add users to domain AND project' do
       domain = @client.domain('gooddata-tomas-svarovsky')
       unused_user_name = find_unused_domain_name(@domain)
-      used_user = domain.users.sample
+      used_user = domain.users.to_a.sample
       begin
         tempfile = Tempfile.new('domain_sync')
         CSV.open(tempfile.path, 'w') do |csv|
@@ -86,7 +86,7 @@ describe GoodData::Bricks::UsersBrick do
     end
 
     it 'should add users to project from domain' do
-      users = @domain.users.sample(10)
+      users = @domain.users.to_a.sample(10)
       begin
         tempfile = Tempfile.new('project_sync')
 
@@ -116,7 +116,7 @@ describe GoodData::Bricks::UsersBrick do
     end
 
     it 'should add users to project from domain' do
-      users = @domain.users.sample(10)
+      users = @domain.users.to_a.sample(10)
       begin
         tempfile = Tempfile.new('project_sync')
 
@@ -131,42 +131,42 @@ describe GoodData::Bricks::UsersBrick do
         @project_1.upload_file(tempfile.path)
 
         user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/users_brick', name: 'users_brick_example', type: :ruby)
-
-        # Users should be added
         user_process.execute('main.rb', params: {
           'domain'        => @domain.name,
           'input_source'  => Pathname(tempfile.path).basename.to_s,
           'sync_mode'     => 'sync_project'
         })
-        users = @project_1.users
-        expect(users.count).to eq 11
-        expect(users.all?(&:enabled?)).to be_truthy
-        expect(users.pmap(&:role).map(&:identifier).uniq.count).to eq 1
+      ensure
+        tempfile.unlink
+      end
+      users = @project_1.users
+      expect(users.count).to eq 11
+      expect(users.all?(&:enabled?)).to be_truthy
+      expect(users.pmap(&:role).map(&:identifier).uniq.count).to eq 1
+    end
 
-        # remove a user and put him to whitelist
-        user = (@project_1.users - [@client.user]).sample
-        user.disable
-        user_process.execute('main.rb', params: {
-          'domain'        => @domain.name,
-          'input_source'  => Pathname(tempfile.path).basename.to_s,
-          'sync_mode'     => 'sync_project',
-          'whitelists'   => [user.login]
-        })
-        expect(@project_1.users.count).to eq 10
+    it 'should fail when the users added are not in domain' do
+      users = @domain.users.to_a.sample(10)
+      begin
+        tempfile = Tempfile.new('project_sync')
 
-        user_process.execute('main.rb', params: {
-          'domain'            => @domain.name,
-          'input_source'      => Pathname(tempfile.path).basename.to_s,
-          'sync_mode'         => 'sync_project',
-          'regexp_whitelists' => ['gooddata\.com']
-        })
-        expect(@project_1.users.count).to eq 10
-        user_process.execute('main.rb', params: {
-          'domain'            => @domain.name,
-          'input_source'      => Pathname(tempfile.path).basename.to_s,
-          'sync_mode'         => 'sync_project'
-        })
-        expect(@project_1.users.count).to eq 11
+        headers = [:first_name, :last_name, :login, :password, :email, :role, :sso_provider]
+        CSV.open(tempfile.path, 'w') do |csv|
+          csv << headers
+          csv << ['I do not', 'Exist', 'really_nonexistent_user@gooddata.com', '1234abcd', 'really_nonexistent_user@gooddata.com', 'admin', 'salesforce.com']
+        end
+
+        @project_1.upload_file(tempfile.path)
+
+        user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/users_brick', name: 'users_brick_example', type: :ruby)
+
+        expect do
+          user_process.execute('main.rb', params: {
+            'domain'        => @domain.name,
+            'input_source'  => Pathname(tempfile.path).basename.to_s,
+            'sync_mode'     => 'sync_project'
+          })
+        end.to raise_error(RuntimeError)
       ensure
         tempfile.unlink
       end
@@ -174,10 +174,10 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   it 'should be able to add users to multiple projects' do
-    users = @domain.users.sample(10)
+    users = @domain.users.to_a.sample(10)
     headers = [:pid, :first_name, :last_name, :login, :password, :email, :role, :sso_provider]
     projects = [@project_1, @project_2]
-    users_data = users.map { |u| u.to_hash.merge(pid: projects.sample.pid, role: ['admin', 'editor'].sample) }
+    users_data = users.map { |u| u.to_hash.merge(pid: projects.to_a.sample.pid, role: ['admin', 'editor'].sample) }
     
     begin
       tempfile = Tempfile.new('sync_multiple_projects_based_on_pid')
@@ -207,10 +207,10 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   it 'should be able to add users to multiple projects through per project ETL' do
-    users = @domain.users.sample(10)
+    users = @domain.users.to_a.sample(10)
     headers = [:pid, :first_name, :last_name, :login, :password, :email, :role, :sso_provider]
     projects = [@project_1, @project_2]
-    users_data = users.map { |u| u.to_hash.merge(pid: projects.sample.pid, role: ['admin', 'editor'].sample) }
+    users_data = users.map { |u| u.to_hash.merge(pid: projects.to_a.sample.pid, role: ['admin', 'editor'].sample) }
     
     begin
       tempfile = Tempfile.new('sync_on_with_pid')

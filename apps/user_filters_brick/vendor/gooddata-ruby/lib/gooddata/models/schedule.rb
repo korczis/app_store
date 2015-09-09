@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require_relative '../rest/resource'
 require_relative '../extensions/hash'
@@ -90,10 +94,14 @@ module GoodData
 
         fail 'Process ID has to be provided' if process_id.blank?
         fail 'Executable has to be provided' if executable.blank?
+        fail 'Trigger schedule has to be provided' if trigger.blank?
+
+        schedule = c.create(GoodData::Schedule, GoodData::Helpers.deep_stringify_keys(GoodData::Helpers.deep_dup(SCHEDULE_TEMPLATE)), client: c, project: p)
 
         default_opts = {
           :type => 'MSETL',
           :timezone => 'UTC',
+          :state => 'ENABLED',
           :params => {
             'PROCESS_ID' => process_id,
             'EXECUTABLE' => executable
@@ -101,15 +109,15 @@ module GoodData
           :reschedule => 0
         }
 
-        schedule = c.create(GoodData::Schedule, GoodData::Helpers.stringify_keys_deep!(SCHEDULE_TEMPLATE.deep_dup), client: c, project: p)
-
-        schedule.hidden_params = options[:hidden_params]
+        schedule.name = options[:name]
         schedule.set_trigger(trigger)
         schedule.params = default_opts[:params].merge(options[:params] || {})
+        schedule.hidden_params = options[:hidden_params] || {}
         schedule.timezone = options[:timezone] || default_opts[:timezone]
+        schedule.state = options[:state] || default_opts[:state]
         schedule.schedule_type = options[:type] || default_opts[:type]
         schedule.reschedule = options[:reschedule] || default_opts[:reschedule]
-        schedule.save
+        schedule
       end
     end
 
@@ -118,15 +126,15 @@ module GoodData
     # @param json [Object] Raw JSON
     # @return [GoodData::Schedule] New GoodData::Schedule instance
     def initialize(json)
-      json = GoodData::Helpers.stringify_keys_deep!(json)
+      json = GoodData::Helpers.deep_stringify_keys(json)
       super
-      GoodData::Helpers.decode_params(json['schedule']['params'] || {})
-      GoodData::Helpers.decode_params(json['schedule']['hiddenParams'] || {})
       @json = json
+      self.params = GoodData::Helpers.decode_params(json['schedule']['params'] || {})
+      self.hidden_params = GoodData::Helpers.decode_params(json['schedule']['hiddenParams'] || {})
     end
 
     def after
-      schedules.find { |s| s.obj_id == trigger_id }
+      project.schedules(trigger_id)
     end
 
     def after=(schedule)
@@ -138,7 +146,7 @@ module GoodData
 
     # Deletes schedule
     def delete
-      client.delete uri
+      saved? ? client.delete(uri) : nil
     end
 
     # Is schedule enabled?
@@ -178,7 +186,9 @@ module GoodData
     # @param [Hash] opts execution options.
     # @option opts [Boolean] :wait Wait for execution result
     # @return [Object] Raw Response
-    def execute(opts = { :wait => true })
+    def execute(opts = {})
+      return nil unless saved?
+      opts =  { :wait => true }.merge(opts)
       data = {
         :execution => {}
       }
@@ -186,14 +196,14 @@ module GoodData
       execution = client.create(GoodData::Execution, res, client: client, project: project)
 
       return execution unless opts[:wait]
-      execution.wait_for_result
+      execution.wait_for_result(opts)
     end
 
     # Returns execution URL
     #
     # @return [String] Executions URL
     def execution_url
-      @json['schedule']['links']['executions']
+      saved? ? @json['schedule']['links']['executions'] : nil
     end
 
     # Returns execution state
@@ -201,6 +211,10 @@ module GoodData
     # @return [String] Execution state
     def state
       @json['schedule']['state']
+    end
+
+    def state=(a_state)
+      @json['schedule']['state'] = a_state
     end
 
     # Returns execution timezone
@@ -264,6 +278,13 @@ module GoodData
       @dirty = true
     end
 
+    # Returns execution process related to this schedule
+    #
+    # @return [GoodData::Process] Process ID
+    def process
+      project.processes(process_id)
+    end
+
     # Returns execution process ID
     #
     # @return [String] Process ID
@@ -291,17 +312,64 @@ module GoodData
       @dirty = true
     end
 
-    # Returns list of executions
+    # Returns enumerator of executions
     #
     # @return [Array] Raw Executions JSON
     def executions
       if @json # rubocop:disable Style/GuardClause
         url = @json['schedule']['links']['executions']
-        res = client.get url
-        res['executions']['items'].map do |e|
-          client.create(Execution, e, :project => project)
+        Enumerator.new do |y|
+          loop do
+            res = client.get url
+            res['executions']['paging']['next']
+            res['executions']['items'].each do |execution|
+              y << client.create(Execution, execution, :project => project)
+            end
+            url = res['executions']['paging']['next']
+            break unless url
+          end
         end
       end
+    end
+
+    # Returns hidden_params as Hash
+    #
+    # @return [Hash] Hidden Parameters
+    def hidden_params
+      @json['schedule']['hiddenParams']
+    end
+
+    # Updates params by merging the current params with new ones
+    #
+    # @param params_to_merge [Hash] params
+    # @return [GoodData::Schedule] Returns self
+    def update_params(params_to_merge)
+      params_to_merge.each do |k, v|
+        set_parameter(k, v)
+      end
+      @dirty = true
+      self
+    end
+
+    # Updates hidden params by merging the current params with new ones
+    #
+    # @param params_to_merge [Hash] params
+    # @return [GoodData::Schedule] Returns self
+    def update_hidden_params(params_to_merge)
+      params_to_merge.each do |k, v|
+        set_hidden_parameter(k, v)
+      end
+      @dirty = true
+      self
+    end
+
+    # Assigns hidden parameters
+    #
+    # @param new_hidden_param [String] Hidden parameters to be set
+    def hidden_params=(new_hidden_params = {})
+      @json['schedule']['hiddenParams'] = new_hidden_params
+      @dirty = true
+      self
     end
 
     # Returns params as Hash
@@ -319,23 +387,9 @@ module GoodData
         'PROCESS_ID' => process_id,
         'EXECUTABLE' => executable
       }
-      @json['schedule']['params'] = default_params.merge(new_params || {})
+      @json['schedule']['params'] = default_params.merge(new_params)
       @dirty = true
-    end
-
-    # Returns hidden_params as Hash
-    #
-    # @return [Hash] Hidden Parameters
-    def hidden_params
-      @json['schedule']['hiddenParams'] || {}
-    end
-
-    # Assigns hidden parameters
-    #
-    # @param new_hidden_param [String] Hidden parameters to be set
-    def hidden_params=(new_hidden_params = {})
-      @json['schedule']['hiddenParams'] = new_hidden_params || {}
-      @dirty = true
+      self
     end
 
     # Saves object if dirty
@@ -346,30 +400,49 @@ module GoodData
       fail 'A timezone has to be provided' if timezone.blank?
       fail 'Schedule type has to be provided' if schedule_type.blank?
       if @dirty
-        update_json = {
-          'schedule' => {
-            'name' => @json['schedule']['name'],
-            'type' => @json['schedule']['type'],
-            'state' => @json['schedule']['state'],
-            'timezone' => @json['schedule']['timezone'],
-            'reschedule' => @json['schedule']['reschedule'],
-            'cron' => @json['schedule']['cron'],
-            'triggerScheduleId' => trigger_id,
-            'params' => GoodData::Helpers.encode_params(params, false),
-            'hiddenParams' => GoodData::Helpers.encode_params(hidden_params, true)
-          }.compact
-        }
-        if uri
-          res = client.put(uri, update_json)
-          @json = res
+        if saved?
+          res = client.put(uri, to_update_payload)
+          @json = Schedule.new(res).json
         else
-          res = client.post "/gdc/projects/#{project.pid}/schedules", update_json
+          res = client.post "/gdc/projects/#{project.pid}/schedules", to_update_payload
           fail 'Unable to create new schedule' if res.nil?
           new_obj_json = client.get res['schedule']['links']['self']
-          @json = new_obj_json
+          @json = Schedule.new(new_obj_json).json
         end
         @dirty = false
       end
+      self
+    end
+
+    # Updates params at key k with val v
+    #
+    # @param k [String] key
+    # @param v [Object] value
+    # @return [GoodData::Schedule] Returns self
+    def set_parameter(k, v)
+      params[k] = v
+      @dirty = true
+      self
+    end
+
+    # Updates hidden params at key k with val v
+    #
+    # @param k [String] key
+    # @param v [Object] value
+    # @return [GoodData::Schedule] Returns self
+    def set_hidden_parameter(k, v)
+      hidden_params[k] = v
+      @dirty = true
+      self
+    end
+
+    def schedule_type
+      json['schedule']['type']
+    end
+
+    def schedule_type=(type)
+      json['schedule']['type'] = type
+      @dirty = true
       self
     end
 
@@ -387,16 +460,11 @@ module GoodData
         cron: cron,
         trigger_id: trigger_id,
         timezone: timezone,
-        uri: uri
-      }.compact
-    end
-
-    def schedule_type
-      json['schedule']['type']
-    end
-
-    def schedule_type=(type)
-      json['schedule']['type'] = type
+        uri: uri,
+        reschedule: reschedule,
+        executable: executable,
+        process_id: process_id
+      }
     end
 
     def trigger_id
@@ -405,6 +473,8 @@ module GoodData
 
     def trigger_id=(a_trigger)
       json['schedule']['triggerScheduleId'] = a_trigger
+      @dirty = true
+      self
     end
 
     def name
@@ -413,6 +483,8 @@ module GoodData
 
     def name=(name)
       json['schedule']['name'] = name
+      @dirty = true
+      self
     end
 
     def set_trigger(trigger) # rubocop:disable Style/AccessorMethodName
@@ -434,6 +506,22 @@ module GoodData
 
     def ==(other)
       other.respond_to?(:uri) && other.uri == uri && other.respond_to?(:to_hash) && other.to_hash == to_hash
+    end
+
+    def to_update_payload
+      {
+        'schedule' => {
+          'name' => name,
+          'type' => type,
+          'state' => state,
+          'timezone' => timezone,
+          'reschedule' => reschedule,
+          'cron' => cron,
+          'triggerScheduleId' => trigger_id,
+          'params' => GoodData::Helpers.encode_public_params(params),
+          'hiddenParams' => GoodData::Helpers.encode_hidden_params(hidden_params)
+        }
+      }
     end
   end
 end

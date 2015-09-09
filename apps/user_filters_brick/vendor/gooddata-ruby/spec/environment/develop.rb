@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 module GoodData
   module Environment
@@ -8,19 +12,19 @@ module GoodData
     end
 
     module ProcessHelper
-      PROCESS_ID = '2e2cbe45-02fd-4a1a-b735-a37d65ff267d'
-      DEPLOY_NAME = 'graph.grf'
+      PROCESS_ID = '94e7be67-5f68-405d-bdeb-93006d50482d'
+      DEPLOY_NAME = 'graph/graph.grf'
     end
 
     module ProjectHelper
-      PROJECT_ID = 'i66l5qezxd96syjo9hgbie8earysh6b7'
+      PROJECT_ID = 'k8rzngunca3t9dywmxhqzpgwlui3yg0m'
       PROJECT_URL = "/gdc/projects/#{PROJECT_ID}"
       PROJECT_TITLE = 'GoodTravis'
       PROJECT_SUMMARY = 'No summary'
     end
 
     module ScheduleHelper
-      SCHEDULE_ID = '556c580ee4b05b1a534f3997'
+      SCHEDULE_ID = '55953261e4b0a92792febe4e'
     end
   end
 end

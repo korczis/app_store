@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 # Global requires
 require 'multi_json'
@@ -13,6 +17,8 @@ GoodData::Environment.load
 module GoodData::Helpers
   module ProjectHelper
     include GoodData::Environment::ProjectHelper
+
+    ENVIRONMENT = 'TESTING'
 
     def self.get_default_project(opts = {:client => GoodData.connection})
       GoodData::Project[PROJECT_ID, opts]

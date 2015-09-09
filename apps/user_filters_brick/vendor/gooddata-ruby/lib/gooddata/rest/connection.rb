@@ -1,11 +1,58 @@
-# encoding: utf-8
+# encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'terminal-table'
 require 'securerandom'
 require 'monitor'
+require 'thread_safe'
+require 'rest-client'
 
 require_relative '../version'
 require_relative '../exceptions/exceptions'
+
+module RestClient
+  module AbstractResponse
+    alias_method :old_follow_redirection, :follow_redirection
+    def follow_redirection(request = nil, result = nil, &block)
+      fail 'Using monkey patched version of RestClient::AbstractResponse#follow_redirection which is guaranteed to be compatible only with RestClient 1.8.0' if RestClient::VERSION != '1.8.0'
+
+      # @args[:cookies] = request.cookies
+      # old_follow_redirection(request, result, &block)
+
+      new_args = @args.dup
+
+      url = headers[:location]
+      url = URI.parse(request.url).merge(url).to_s if url !~ /^http/
+
+      new_args[:url] = url
+      if request
+        fail MaxRedirectsReached if request.max_redirects == 0
+        new_args[:password] = request.password
+        new_args[:user] = request.user
+        new_args[:headers] = request.headers
+        new_args[:max_redirects] = request.max_redirects - 1
+
+        # TODO: figure out what to do with original :cookie, :cookies values
+        new_args[:cookies] = get_redirection_cookies(request, result, new_args)
+      end
+
+      Request.execute(new_args, &block)
+    end
+
+    # Returns cookies which should be passed when following redirect
+    #
+    # @param request [RestClient::Request] Original request
+    # @param result [Net::HTTPResponse] Response
+    # @param args [Hash] Original arguments
+    # @return [Hash] Cookies to be passsed when following redirect
+    def get_redirection_cookies(request, _result, _args)
+      request.cookies
+    end
+  end
+end
 
 module GoodData
   module Rest
@@ -13,10 +60,12 @@ module GoodData
     class Connection
       include MonitorMixin
 
-      DEFAULT_URL = ENV['GD_SERVER'] || 'https://secure.gooddata.com'
+      DEFAULT_URL = 'https://secure.gooddata.com'
       LOGIN_PATH = '/gdc/account/login'
       TOKEN_PATH = '/gdc/account/token'
       KEYS_TO_SCRUB = [:password, :verifyPassword, :authorizationToken]
+
+      ID_LENGTH = 16
 
       DEFAULT_HEADERS = {
         :content_type => :json,
@@ -56,6 +105,15 @@ module GoodData
             }
           }
           res
+        end
+
+        # Generate random string with URL safe base64 encoding
+        #
+        # @param [String] length Length of random string to be generated
+        #
+        # @return [String] Generated random string
+        def generate_string(length = ID_LENGTH)
+          SecureRandom.urlsafe_base64(length)
         end
 
         # Retry block if exception thrown
@@ -119,12 +177,11 @@ module GoodData
 
       # Connect using username and password
       def connect(username, password, options = {})
-        server = options[:server] || DEFAULT_URL
+        server = options[:server] || Helpers::AuthHelper.read_server
         options = DEFAULT_LOGIN_PAYLOAD.merge(options)
         headers = options[:headers] || {}
 
         options = options.merge(headers)
-
         @server = RestClient::Resource.new server, options
 
         # Install at_exit handler first
@@ -141,17 +198,29 @@ module GoodData
         # Reset old cookies first
         if options[:sst_token]
           merge_cookies!('GDCAuthSST' => options[:sst_token])
+          get('/gdc/account/token', @request_params)
+
           @user = get(get('/gdc/app/account/bootstrap')['bootstrapResource']['accountSetting']['links']['self'])
+          GoodData.logger.info("Connected using SST to server #{@server.url} to profile \"#{@user['accountSetting']['login']}\"")
           @auth = {}
           refresh_token :dont_reauth => true
         else
+          GoodData.logger.info("Connected using username \"#{username}\" to server #{@server.url}")
           credentials = Connection.construct_login_payload(username, password)
           generate_session_id
-          @auth = post(LOGIN_PATH, credentials)['userLogin']
+          @auth = post(LOGIN_PATH, credentials, :dont_reauth => true)['userLogin']
 
           refresh_token :dont_reauth => true
           @user = get(@auth['profile'])
         end
+        GoodData.logger.info('Connection successful')
+      rescue RestClient::Unauthorized => e
+        GoodData.logger.info('Bad Login or Password')
+        GoodData.logger.info('Connection failed')
+        raise e
+      rescue RestClient::Forbidden => e
+        GoodData.logger.info('Connection failed')
+        raise e
       end
 
       # Disconnect
@@ -264,11 +333,12 @@ module GoodData
         GoodData.logger.debug "DELETE: #{@server.url}#{uri}"
         profile "DELETE #{uri}" do
           b = proc do
+            params = fresh_request_params(options[:request_id])
             begin
-              @server[uri].delete(fresh_request_params(options[:request_id]))
+              @server[uri].delete(params)
             rescue RestClient::Exception => e
               # log the error if it happens
-              GoodData.logger.error(e.inspect)
+              log_error(e, uri, params)
               raise e
             end
           end
@@ -276,19 +346,30 @@ module GoodData
         end
       end
 
+      # Helper for logging error
+      #
+      # @param e [RuntimeException] Exception to log
+      # @param uri [String] Uri on which the request failed
+      # @param uri [Hash] Additional params
+      def log_error(e, uri, params)
+        return if e.response && e.response.code == 401 && !uri.include?('token') && !uri.include?('login')
+        GoodData.logger.error(format_error(e, params))
+      end
+
       # HTTP GET
       #
       # @param uri [String] Target URI
       def get(uri, options = {}, &user_block)
         options = log_info(options)
-        GoodData.logger.debug "GET: #{@server.url}#{uri}"
+        GoodData.logger.debug "GET: #{@server.url}#{uri}, #{options}"
         profile "GET #{uri}" do
           b = proc do
+            params = fresh_request_params(options[:request_id]).merge(options)
             begin
-              @server[uri].get(fresh_request_params(options[:request_id]), &user_block)
+              @server[uri].get(params, &user_block)
             rescue RestClient::Exception => e
               # log the error if it happens
-              GoodData.logger.error(e.inspect)
+              log_error(e, uri, params)
               raise e
             end
           end
@@ -305,11 +386,12 @@ module GoodData
         GoodData.logger.debug "PUT: #{@server.url}#{uri}, #{scrub_params(data, KEYS_TO_SCRUB)}"
         profile "PUT #{uri}" do
           b = proc do
+            params = fresh_request_params(options[:request_id])
             begin
-              @server[uri].put(payload, fresh_request_params(options[:request_id]))
+              @server[uri].put(payload, params)
             rescue RestClient::Exception => e
               # log the error if it happens
-              GoodData.logger.error(e.inspect)
+              log_error(e, uri, params)
               raise e
             end
           end
@@ -326,11 +408,12 @@ module GoodData
         profile "POST #{uri}" do
           payload = data.is_a?(Hash) ? data.to_json : data
           b = proc do
+            params = fresh_request_params(options[:request_id])
             begin
-              @server[uri].post(payload, fresh_request_params(options[:request_id]))
+              @server[uri].post(payload, params)
             rescue RestClient::Exception => e
               # log the error if it happens
-              GoodData.logger.error(e.inspect)
+              log_error(e, uri, params)
               raise e
             end
           end
@@ -374,7 +457,6 @@ module GoodData
         dir = options[:directory] || ''
         staging_uri = options[:staging_url].to_s
         url = dir.empty? ? staging_uri : URI.join(staging_uri, "#{dir}/").to_s
-
         # Make a directory, if needed
         create_webdav_dir_if_needed url unless dir.empty?
 
@@ -387,8 +469,6 @@ module GoodData
       end
 
       private
-
-      ID_LENGTH = 16
 
       def create_webdav_dir_if_needed(url)
         return if webdav_dir_exists?(url)
@@ -429,22 +509,22 @@ module GoodData
         response
       end
 
-      def generate_string
-        SecureRandom.urlsafe_base64(ID_LENGTH)
+      def format_error(e, params)
+        "#{params[:x_gdc_request]} #{e.inspect}"
       end
 
       # generate session id to be passed as the first part to
       # x_gdc_request header
       def session_id
-        @session_id ||= generate_string
+        @session_id ||= Connection.generate_string
       end
 
       def call_id
-        generate_string
+        Connection.generate_string
       end
 
       def generate_session_id
-        @session_id = generate_string
+        @session_id = Connection.generate_string
       end
 
       def clear_session_id
@@ -472,8 +552,8 @@ module GoodData
 
       def process_response(options = {}, &block)
         retries = options[:tries] || 3
-
-        response = GoodData::Rest::Connection.retryable(:tries => retries, :refresh_token => proc { refresh_token unless options[:dont_reauth] }) do
+        opts = { tries: retries, refresh_token: proc { refresh_token unless options[:dont_reauth] } }.merge(options)
+        response = GoodData::Rest::Connection.retryable(opts) do
           block.call
         end
 
@@ -522,7 +602,7 @@ module GoodData
       def scrub_params(params, keys)
         keys = keys.reduce([]) { |a, e| a.concat([e.to_s, e.to_sym]) }
 
-        new_params = params.deep_dup
+        new_params = GoodData::Helpers.deep_dup(params)
         GoodData::Helpers.hash_dfs(new_params) do |k, _key|
           keys.each do |key_to_scrub|
             k[key_to_scrub] = ('*' * k[key_to_scrub].length) if k && k.key?(key_to_scrub) && k[key_to_scrub]

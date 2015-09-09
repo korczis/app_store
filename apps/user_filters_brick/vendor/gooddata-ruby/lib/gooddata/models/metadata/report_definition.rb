@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require_relative '../metadata'
 require_relative 'metadata'
@@ -17,7 +21,7 @@ module GoodData
       # @option options [Boolean] :full if passed true the subclass can decide to pull in full objects. This is desirable from the usability POV but unfortunately has negative impact on performance so it is not the default
       # @return [Array<GoodData::MdObject> | Array<Hash>] Return the appropriate metadata objects or their representation
       def all(options = { :client => GoodData.connection, :project => GoodData.project })
-        query('reportdefinition', ReportDefinition, options)
+        query('reportDefinition', ReportDefinition, options)
       end
 
       def create_metrics_part(left, top)
@@ -27,12 +31,16 @@ module GoodData
         end
       end
 
+      alias_method :create_measures_part, :create_metrics_part
+
       def create_metric_part(metric)
         {
           'alias' => metric.title,
           'uri' => metric.uri
         }
       end
+
+      alias_method :create_measure_part, :create_metric_part
 
       def create_attribute_part(attrib)
         {
@@ -68,54 +76,41 @@ module GoodData
 
       def find(stuff, opts = { :client => GoodData.connection, :project => GoodData.project })
         client = opts[:client]
+        project = opts[:project]
         fail ArgumentError, 'No :client specified' if client.nil?
+        fail ArgumentError, 'No :project specified' if project.nil?
 
         stuff.map do |item|
-          if item.respond_to?(:attribute?) && item.attribute?
-            item.display_forms.first
-          elsif item.is_a?(String)
-            x = GoodData::MdObject.get_by_id(item, opts)
-            fail "Object given by id \"#{item}\" could not be found" if x.nil?
-            case x.raw_data.keys.first.to_s
-            when 'attribute'
-              attr = GoodData::Attribute.new(x.json)
-              attr.client = client
-              attr.project = opts[:project]
-              attr.display_forms.first
-            when 'attributeDisplayForm'
-              GoodData::Label.new(x.json)
-            when 'metric'
-              GoodData::Metric.new(x.json)
-            end
-          elsif item.is_a?(Hash) && item.keys.include?(:title)
-            case item[:type].to_s
-            when 'metric'
-              GoodData::Metric.find_first_by_title(item[:title])
-            when 'attribute'
-              result = GoodData::Attribute.find_first_by_title(item[:title])
-              result.display_forms.first
-            end
-          elsif item.is_a?(Hash) && (item.keys.include?(:id))
-            case item[:type].to_s
-            when 'metric'
-              GoodData::Metric.get_by_id(item[:id])
-            when 'attribute'
-              GoodData::Attribute.get_by_id(item[:id]).display_forms.first
-            when 'label'
-              GoodData::Label.get_by_id(item[:id])
-          end
-          elsif item.is_a?(Hash) && (item.keys.include?(:identifier))
-            case item[:type].to_s
-            when 'metric'
-              GoodData::Metric.get_by_id(item[:identifier])
-            when 'attribute'
-              result = GoodData::Attribute.get_by_id(item[:identifier])
-              result.display_forms.first
-            when 'label'
-              GoodData::Label.get_by_id(item[:identifier])
-            end
+          obj = if item.is_a?(String)
+                  begin
+                    project.objects(item)
+                  rescue RestClient::ResourceNotFound
+                    raise "Object given by id \"#{item}\" could not be found"
+                  end
+                elsif item.is_a?(Hash) && item.keys.include?(:title)
+                  case item[:type].to_s
+                  when 'metric'
+                    GoodData::Metric.find_first_by_title(item[:title], opts)
+                  when 'attribute'
+                    GoodData::Attribute.find_first_by_title(item[:title], opts)
+                  end
+                elsif item.is_a?(Hash) && (item.keys.include?(:id) || item.keys.include?(:identifier))
+                  id = item[:id] || item[:identifier]
+                  case item[:type].to_s
+                  when 'metric'
+                    project.metrics(id)
+                  when 'attribute'
+                    project.attributes(id)
+                  when 'label'
+                    projects.labels(id)
+                  end
+                else
+                  item
+                end
+          if obj.respond_to?(:attribute?) && obj.attribute?
+            obj.display_forms.first
           else
-            item
+            obj
           end
         end
       end
@@ -223,6 +218,8 @@ module GoodData
       content['grid']['metrics']
     end
 
+    alias_method :measure_parts, :metric_parts
+
     def metrics
       metric_parts.map { |i| project.metrics(i['uri']) }
     end
@@ -276,7 +273,7 @@ module GoodData
         uri_for_what = for_what.respond_to?(:uri) ? for_what.uri : for_what
 
         content['grid']['metrics'] = metric_parts.map do |item|
-          item.deep_dup.tap do |i|
+          GoodData::Helpers.deep_dup(item).tap do |i|
             i['uri'].gsub!("[#{uri_what}]", "[#{uri_for_what}]")
           end
         end
@@ -284,7 +281,7 @@ module GoodData
         cols = content['grid']['columns'] || []
         content['grid']['columns'] = cols.map do |item|
           if item.is_a?(Hash)
-            item.deep_dup.tap do |i|
+            GoodData::Helpers.deep_dup(item).tap do |i|
               i['attribute']['uri'].gsub!("[#{uri_what}]", "[#{uri_for_what}]")
             end
           else
@@ -295,7 +292,7 @@ module GoodData
         rows = content['grid']['rows'] || []
         content['grid']['rows'] = rows.map do |item|
           if item.is_a?(Hash)
-            item.deep_dup.tap do |i|
+            GoodData::Helpers.deep_dup(item).tap do |i|
               i['attribute']['uri'].gsub!("[#{uri_what}]", "[#{uri_for_what}]")
             end
           else
@@ -306,7 +303,7 @@ module GoodData
         widths = content['grid']['columnWidths'] || []
         content['grid']['columnWidths'] = widths.map do |item|
           if item.is_a?(Hash)
-            item.deep_dup.tap do |i|
+            GoodData::Helpers.deep_dup(item).tap do |i|
               if i['locator'][0].key?('attributeHeaderLocator')
                 i['locator'][0]['attributeHeaderLocator']['uri'].gsub!("[#{uri_what}]", "[#{uri_for_what}]")
               end
@@ -319,7 +316,7 @@ module GoodData
         sort = content['grid']['sort']['columns'] || []
         content['grid']['sort']['columns'] = sort.map do |item|
           if item.is_a?(Hash)
-            item.deep_dup.tap do |i|
+            GoodData::Helpers.deep_dup(item).tap do |i|
               next unless i.key?('metricSort')
               next unless i['metricSort'].key?('locators')
               next unless i['metricSort']['locators'][0].key?('attributeLocator2')
@@ -336,7 +333,7 @@ module GoodData
             key = e[0]
             val = e[1]
             a[key] = val.map do |item|
-              item.deep_dup.tap do |i|
+              GoodData::Helpers.deep_dup(item).tap do |i|
                 i['uri'].gsub!("[#{uri_what}]", "[#{uri_for_what}]")
               end
             end
@@ -374,9 +371,9 @@ module GoodData
       end
 
       if result.empty?
-        client.create(EmptyResult, result)
+        client.create(ReportDataResult, data: [], top: 0, left: 0, project: project)
       else
-        client.create(ReportDataResult, result)
+        ReportDataResult.from_xtab(result, client: client, project: project)
       end
     end
   end

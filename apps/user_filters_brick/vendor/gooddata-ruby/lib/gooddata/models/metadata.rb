@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require_relative '../core/project'
 
@@ -10,7 +14,7 @@ module GoodData
     MD_OBJ_CTG = 'obj'
     IDENTIFIERS_CFG = 'instance-identifiers'
 
-    attr_reader :json
+    attr_accessor :json
 
     alias_method :raw_data, :json
     alias_method :to_hash, :json
@@ -31,7 +35,7 @@ module GoodData
       end
     end
 
-    metadata_property_reader :uri, :identifier, :title, :summary, :tags, :deprecated, :category
+    metadata_property_reader :uri, :identifier, :title, :summary, :tags, :category
     metadata_property_writer :tags, :summary, :title, :identifier
 
     def initialize(data)
@@ -61,13 +65,22 @@ module GoodData
       client.connection.server_url + meta['uri']
     end
 
+    def deprecated
+      if meta['deprecated'] == '1'
+        true
+      else
+        false
+      end
+    end
+    alias_method :deprecated?, :deprecated
+
     def deprecated=(flag)
-      if flag == '1' || flag == 1
+      if flag == '1' || flag == 1 || flag == true
         meta['deprecated'] = '1'
-      elsif flag == '0' || flag == 0
+      elsif flag == '0' || flag == 0 || flag == false
         meta['deprecated'] = '0'
       else
-        fail 'You have to provide flag as either 1 or "1" or 0 or "0"'
+        fail 'You have to provide flag as either 1 or "1" or 0 or "0" or true/false'
       end
     end
 
@@ -78,11 +91,6 @@ module GoodData
     def remove_tag(a_tag)
       self.tags = tag_set.delete(a_tag).to_a.join(' ')
       self
-    end
-
-    def saved?
-      res = uri.nil?
-      !res
     end
 
     def save
@@ -148,6 +156,25 @@ module GoodData
 
     def ==(other)
       other.respond_to?(:uri) && other.uri == uri && other.respond_to?(:to_hash) && other.to_hash == to_hash
+    end
+
+    def listed?
+      !unlisted?
+    end
+
+    def unlisted
+      meta['unlisted'] == '1'
+    end
+    alias_method :unlisted?, :unlisted
+
+    def unlisted=(flag)
+      if flag == true
+        meta['unlisted'] = '1'
+      elsif flag == false
+        meta['unlisted'] = '0'
+      else
+        fail 'You have to provide flag as either true or false'
+      end
     end
 
     def validate

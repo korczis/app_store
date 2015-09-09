@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'csv'
 require 'zip'
@@ -8,6 +12,8 @@ require 'pmap'
 require 'zip'
 
 require_relative '../exceptions/no_project_error'
+
+require_relative '../helpers/auth_helpers'
 
 require_relative '../rest/resource'
 require_relative '../mixins/author'
@@ -25,6 +31,7 @@ module GoodData
     PROJECT_PATH = '/gdc/projects/%s'
     SLIS_PATH = '/ldm/singleloadinterface'
     DEFAULT_INVITE_MESSAGE = 'Join us!'
+    DEFAULT_ENVIRONMENT = 'PRODUCTION'
 
     EMPTY_OBJECT = {
       'project' => {
@@ -33,7 +40,8 @@ module GoodData
         },
         'content' => {
           'guidedNavigation' => 1,
-          'driver' => 'Pg'
+          'driver' => 'Pg',
+          'environment' => GoodData::Helpers::AuthHelper.read_environment
         }
       }
     }
@@ -86,13 +94,17 @@ module GoodData
 
       def create_object(data = {})
         c = client(data)
-        new_data = EMPTY_OBJECT.deep_dup.tap do |d|
+        new_data = GoodData::Helpers.deep_dup(EMPTY_OBJECT).tap do |d|
           d['project']['meta']['title'] = data[:title]
           d['project']['meta']['summary'] = data[:summary] if data[:summary]
           d['project']['meta']['projectTemplate'] = data[:template] if data[:template]
           d['project']['content']['guidedNavigation'] = data[:guided_navigation] if data[:guided_navigation]
-          d['project']['content']['authorizationToken'] = data[:auth_token] if data[:auth_token]
+
+          token = data[:auth_token] || data[:token]
+
+          d['project']['content']['authorizationToken'] = token if token
           d['project']['content']['driver'] = data[:driver] if data[:driver]
+          d['project']['content']['environment'] = data[:environment] if data[:environment]
         end
         c.create(Project, new_data)
       end
@@ -109,7 +121,8 @@ module GoodData
         c = client(opts)
         fail ArgumentError, 'No :client specified' if c.nil?
 
-        auth_token = opts[:auth_token]
+        opts = { :auth_token => Helpers::AuthHelper.read_token }.merge(opts)
+        auth_token = opts[:auth_token] || opts[:token]
         fail ArgumentError, 'You have to provide your token for creating projects as :auth_token parameter' if auth_token.nil? || auth_token.empty?
 
         project = create_object(opts)
@@ -141,7 +154,7 @@ module GoodData
       end
 
       def create_from_blueprint(blueprint, options = {})
-        GoodData::Model::ProjectCreator.migrate(options.merge(spec: blueprint, token: options[:auth_token], client: GoodData.connection))
+        GoodData::Model::ProjectCreator.migrate(options.merge(spec: blueprint, client: GoodData.connection))
       end
 
       # Takes one CSV line and creates hash from data extracted
@@ -162,6 +175,12 @@ module GoodData
       end
     end
 
+    def add_dashboard(dashboard)
+      GoodData::Dashboard.create(dashboard, :client => client, :project => self)
+    end
+
+    alias_method :create_dashboard, :add_dashboard
+
     # Creates a metric in a project
     #
     # @param [options] Optional report options
@@ -176,6 +195,9 @@ module GoodData
     end
 
     alias_method :create_metric, :add_metric
+
+    alias_method :add_measure, :add_metric
+    alias_method :create_measure, :add_metric
 
     # Creates new instance of report in context of project
     #
@@ -237,7 +259,7 @@ module GoodData
     #
     # @return [GoodData::ProjectRole] Project role if found
     def blueprint(options = {})
-      result = client.get("/gdc/projects/#{pid}/model/view")
+      result = client.get("/gdc/projects/#{pid}/model/view", params: { includeDeprecated: true })
       polling_url = result['asyncTask']['link']['poll']
       model = client.poll_on_code(polling_url, options)
       bp = GoodData::Model::FromWire.from_wire(model)
@@ -349,8 +371,11 @@ module GoodData
       GoodData::Metric.xexecute(expression, client: client, project: self)
     end
 
+    alias_method :compute_measure, :compute_metric
+
     def create_schedule(process, date, executable, options = {})
-      GoodData::Schedule.create(process, date, executable, options.merge(client: client, project: self))
+      s = GoodData::Schedule.create(process, date, executable, options.merge(client: client, project: self))
+      s.save
     end
 
     def create_variable(data)
@@ -524,19 +549,16 @@ module GoodData
       end
     end
 
-    # Get WebDav directory for user data
-    # @return [String]
-    def user_webdav_path
-      u = URI(links['uploads'])
-      URI.join(u.to_s.chomp(u.path.to_s), '/uploads/')
-    end
-
-    def upload_file(file)
-      GoodData.upload_to_project_webdav(file, project: self)
+    def upload_file(file, options = {})
+      GoodData.upload_to_project_webdav(file, options.merge(project: self))
     end
 
     def download_file(file, where)
       GoodData.download_from_project_webdav(file, where, project: self)
+    end
+
+    def environment
+      json['project']['content']['environment']
     end
 
     # Gets user by its email, full_name, login or uri
@@ -677,13 +699,19 @@ module GoodData
       GoodData::Metric[id, opts.merge(project: self, client: client)]
     end
 
+    alias_method :measures, :metrics
+
     def metric_by_title(title)
       GoodData::Metric.find_first_by_title(title, project: self, client: client)
     end
 
+    alias_method :measure_by_title, :metric_by_title
+
     def metrics_by_title(title)
       GoodData::Metric.find_by_title(title, project: self, client: client)
     end
+
+    alias_method :measures_by_title, :metrics_by_title
 
     # Checks if the profile is member of project
     #
@@ -714,18 +742,23 @@ module GoodData
       GoodData::MdObject[id, opts.merge(project: self, client: client)]
     end
 
-    def partial_md_export(objs, options = {})
+    # Transfer objects from one project to another
+    #
+    # @param [Array<GoodData::MdObject | String>, String, GoodData::MdObject] objs Any representation of the object or a list of those
+    # @param [Hash] options The options to migration.
+    # @option options [Number] :time_limit Time in seconds before the blocking call will fail. See GoodData::Rest::Client.poll_on_response for additional details
+    # @option options [Number] :sleep_interval Interval between polls on the status of the migration.
+    # @return [String] Returns token that you can use as input for object_import
+    def objects_export(objs, options = {})
       fail 'Nothing to migrate. You have to pass list of objects, ids or uris that you would like to migrate' if objs.nil?
-      objs = [objs] unless objs.is_a?(Array)
+      objs = Array(objs)
       fail 'Nothing to migrate. The list you provided is empty' if objs.empty?
 
-      target_project = options[:project]
-      fail 'You have to provide a project instance or project pid to migrate to' if target_project.nil?
-      target_project = client.projects(target_project)
-      objs = objs.pmap { |obj| objects(obj) }
+      objs = objs.pmap { |obj| [obj, objects(obj)] }
+      fail ObjectsExportError, "Exporting objects failed with messages. Object #{objs.select { |_, obj| obj.nil? }.map { |o, _| o }.join(', ')} could not be found." if objs.any? { |_, obj| obj.nil? }
       export_payload = {
         :partialMDExport => {
-          :uris => objs.map(&:uri)
+          :uris => objs.map { |_, obj| obj.uri }
         }
       }
       result = client.post("#{md['maintenance']}/partialmdexport", export_payload)
@@ -735,8 +768,22 @@ module GoodData
       polling_result = client.poll_on_response(polling_url, options) do |body|
         body['wTaskStatus'] && body['wTaskStatus']['status'] == 'RUNNING'
       end
+      if polling_result['wTaskStatus'] && polling_result['wTaskStatus']['status'] == 'ERROR'
+        messages = GoodData::Helpers.interpolate_error_messages(polling_result['wTaskStatus']['messages']).join(' ')
+        fail ObjectsExportError, "Exporting objects failed with messages. #{messages}"
+      end
+      token
+    end
 
-      fail 'Exporting objects failed' if polling_result['wTaskStatus'] && polling_result['wTaskStatus']['status'] == 'ERROR'
+    # Import objects from import token. If you do not need specifically this method what you are probably looking for is transfer_objects. This is a lower level method.
+    #
+    # @param [String] token Migration token ID
+    # @param [Hash] options The options to migration.
+    # @option options [Number] :time_limit Time in seconds before the blocking call will fail. See GoodData::Rest::Client.poll_on_response for additional details
+    # @option options [Number] :sleep_interval Interval between polls on the status of the migration.
+    # @return [Boolean] Returns true if it succeeds or throws exceoption
+    def objects_import(token, options = {})
+      fail 'You need to provide a token for object import' if token.blank?
 
       import_payload = {
         :partialMDImport => {
@@ -746,14 +793,56 @@ module GoodData
         }
       }
 
-      result = client.post("#{target_project.md['maintenance']}/partialmdimport", import_payload)
+      result = client.post("#{md['maintenance']}/partialmdimport", import_payload)
       polling_url = result['uri']
 
-      client.poll_on_response(polling_url, options) do |body|
+      polling_result = client.poll_on_response(polling_url, options) do |body|
         body['wTaskStatus'] && body['wTaskStatus']['status'] == 'RUNNING'
       end
 
-      fail 'Exporting objects failed' if polling_result['wTaskStatus']['status'] == 'ERROR'
+      if polling_result['wTaskStatus']['status'] == 'ERROR'
+        messages = GoodData::Helpers.interpolate_error_messages(polling_result['wTaskStatus']['messages']).join(' ')
+        fail ObjectsImportError, "Importing objects failed with messages. #{messages}"
+      end
+      true
+    end
+
+    # Transfer objects from one project to another
+    #
+    # @param [Array<GoodData::MdObject | String>, String, GoodData::MdObject] objects Any representation of the object or a list of those
+    # @param [Hash] options The options to migration.
+    # @option options [GoodData::Project | String | Array<String> | Array<GoodData::Project>] :project Project(s) to migrate to
+    # @option options [Number] :batch_size Number of projects that are migrated at the same time. Default is 10
+    #
+    # @return [Boolean | Array<Hash>] Return either true or throws exception if you passed only one project. If you provided an array returns list of hashes signifying sucees or failure. Take note that in case of list of projects it does not throw exception
+    def partial_md_export(objects, options = {})
+      projects = options[:project]
+      batch_size = options[:batch_size] || 10
+      token = objects_export(objects)
+
+      if projects.is_a?(Array)
+        projects.each_slice(batch_size).flat_map do |batch|
+          batch.pmap do |proj|
+            target_project = client.projects(proj)
+            begin
+              target_project.objects_import(token, options)
+              {
+                project: target_project,
+                result: true
+              }
+            rescue GoodData::ObjectsImportError => e
+              {
+                project: target_project,
+                result: false,
+                reason: e.message
+              }
+            end
+          end
+        end
+      else
+        target_project = client.projects(projects)
+        target_project.objects_import(token, options)
+      end
     end
 
     alias_method :transfer_objects, :partial_md_export
@@ -1002,7 +1091,7 @@ module GoodData
 
     # Saves project
     def save
-      data_to_send = raw_data.deep_dup
+      data_to_send = GoodData::Helpers.deep_dup(raw_data)
       data_to_send['project']['content'].delete('cluster')
       data_to_send['project']['content'].delete('isPublic')
       data_to_send['project']['content'].delete('state')
@@ -1015,14 +1104,6 @@ module GoodData
                  end
       @json = response
       self
-    end
-
-    # Checks if is project saved
-    #
-    # @return [Boolean] True if saved, false if not
-    def saved?
-      res = uri.nil?
-      !res
     end
 
     # @param [String | Number | Object] Anything that you can pass to GoodData::Schedule[id]
@@ -1065,6 +1146,10 @@ module GoodData
       GoodData::Model.upload_data(data, blueprint, dataset_name, options.merge(client: client, project: self))
     end
 
+    def upload_multiple(data, blueprint, options = {})
+      GoodData::Model.upload_multiple_data(data, blueprint, options.merge(client: client, project: self))
+    end
+
     def uri
       data['links']['self'] if data && data['links'] && data['links']['self']
     end
@@ -1085,27 +1170,21 @@ module GoodData
     #
     #
     # @return [Array<GoodData::User>] List of users
-    def users(opts = { offset: 0, limit: 1_000 })
-      result = []
-
-      # TODO: @korczis, review this after WA-3953 get fixed
-      offset = 0 || opts[:offset]
-      uri = "/gdc/projects/#{pid}/users?offset=#{offset}&limit=#{opts[:limit]}"
-      loop do
-        break unless uri
-        tmp = client(opts).get(uri)
-        tmp['users'].each do |user|
-          result << client.factory.create(GoodData::Membership, user, project: self)
-        end
-        offset += opts[:limit]
-        if tmp['users'].length == opts[:limit]
-          uri = "/gdc/projects/#{pid}/users?offset=#{offset}&limit=#{opts[:limit]}"
-        else
-          uri = nil
+    def users(opts = {})
+      client = client(opts)
+      Enumerator.new do |y|
+        offset = opts[:offset] || 0
+        limit = opts[:limit] || 1_000
+        loop do
+          tmp = client.get("/gdc/projects/#{pid}/users", params: { offset: offset, limit: limit })
+          tmp['users'].each do |user_data|
+            user = client.create(GoodData::Membership, user_data, project: self)
+            y << user if opts[:all] || user && user.enabled?
+          end
+          break if tmp['users'].count < limit
+          offset += limit
         end
       end
-
-      opts[:all] ? result : result.select(&:enabled?).reject(&:deleted?)
     end
 
     alias_method :members, :users
@@ -1126,9 +1205,8 @@ module GoodData
 
     # Imports users
     def import_users(new_users, options = {})
-      domain = options[:domain]
       role_list = roles
-      users_list = users(all: true, offset: 0, limit: 1_000)
+      users_list = users(all: true)
       new_users = new_users.map { |x| (x.is_a?(Hash) && x[:user] && x[:user].to_hash.merge(role: x[:role])) || x.to_hash }
 
       GoodData.logger.warn("Importing users to project (#{pid})")
@@ -1141,29 +1219,35 @@ module GoodData
         u
       end
 
-      diffable_new = diffable_new_with_default_role.map do |u|
+      intermediate_new = diffable_new_with_default_role.map do |u|
         u[:role] = u[:role].map do |r|
           role = get_role(r, role_list)
           role && role.uri
         end
+
+        if u[:role].all?(&:nil?)
+          u[:type] = :error
+          u[:reason] = 'Invalid role(s) specified'
+        else
+          u[:type] = :ok
+        end
+
         u[:status] = 'ENABLED'
         u
       end
 
+      intermediate_new_by_type = intermediate_new.group_by { |i| i[:type] }
+      diffable_new = intermediate_new_by_type[:ok] || []
+
       # Diff users. Only login and role is important for the diff
       diff = GoodData::Helpers.diff(whitelisted_users, diffable_new, key: :login, fields: [:login, :role, :status])
 
-      results = []
       # Create new users
-      u = diff[:added].map do |x|
-        {
-          user: x,
-          role: x[:role]
-        }
-      end
-      # This is only creating users that were not in the proejcts so far. This means this will reach into domain
+      u = diff[:added].map { |x| { user: x, role: x[:role] } }
+
+      results = []
       GoodData.logger.warn("Creating #{diff[:added].count} users in project (#{pid})")
-      results.concat create_users(u, roles: role_list, domain: domain, project_users: whitelisted_users, only_domain: true)
+      results.concat(create_users(u, roles: role_list, project_users: whitelisted_users))
 
       # # Update existing users
       GoodData.logger.warn("Updating #{diff[:changed].count} users in project (#{pid})")
@@ -1172,9 +1256,8 @@ module GoodData
 
       # Remove old users
       to_remove = diff[:removed].reject { |user| user[:status] == 'DISABLED' || user[:status] == :disabled }
-      GoodData.logger.warn("Removing #{to_remove.count} users in project (#{pid})")
+      GoodData.logger.warn("Removing #{to_remove.count} users from project (#{pid})")
       results.concat(disable_users(to_remove))
-      results
     end
 
     def disable_users(list)
@@ -1183,34 +1266,11 @@ module GoodData
       payloads = list.map do |u|
         generate_user_payload(u[:uri], 'DISABLED')
       end
+
       payloads.each_slice(100).mapcat do |payload|
         result = client.post(url, 'users' => payload)
         result['projectUsersUpdateResult'].mapcat { |k, v| v.map { |x| { type: k.to_sym, uri: x } } }
       end
-    end
-
-    def verify_user_to_add(login, desired_roles, options = {})
-      user = login if login.respond_to?(:uri) && !login.uri.nil?
-      role_list = options[:roles] || roles
-      desired_roles = Array(desired_roles)
-      roles = desired_roles.map do |role_name|
-        role = get_role(role_name, role_list)
-        fail ArgumentError, "Invalid role '#{role_name}' specified for user '#{user.email}'" if role.nil?
-        role.uri
-      end
-      return [user.uri, roles] if user
-
-      domain = client.domain(options[:domain]) if options[:domain]
-      domain_users = options[:domain_users] || (domain && domain.users)
-      project_users = options[:project_users] || users
-
-      project_user = get_user(login, project_users)
-      domain_user = if domain && !project_user && !user
-                      domain.get_user(login, domain_users) if domain && !project_user
-                    end
-      user = project_user || domain_user
-      fail ArgumentError, "Invalid user '#{login}' specified" unless user
-      [user.uri, roles]
     end
 
     # Update user
@@ -1219,10 +1279,13 @@ module GoodData
     # @param desired_roles Roles to be assigned to user
     # @param role_list Optional cached list of roles used for lookups
     def set_user_roles(login, desired_roles, options = {})
-      user_uri, roles = verify_user_to_add(login, desired_roles, options)
+      user_uri, roles = resolve_roles(login, desired_roles, options)
       url = "#{uri}/users"
       payload = generate_user_payload(user_uri, 'ENABLED', roles)
-      client.post(url, payload)
+      res = client.post(url, payload)
+      failure = GoodData::Helpers.get_path(res, %w(projectUsersUpdateResult failed))
+      fail ArgumentError, "User #{user_uri} could not be aded. #{failure.first['message']}" unless failure.blank?
+      res
     end
 
     alias_method :add_user, :set_user_roles
@@ -1235,33 +1298,30 @@ module GoodData
       return [] if list.empty?
       role_list = options[:roles] || roles
       project_users = options[:project_users] || users
-      domain = options[:domain] && client.domain(options[:domain])
-      domain_users = if domain.nil?
-                       options[:domain_users]
-                     else
-                       if options[:only_domain] && list.count < 100
-                         list.map { |l| domain.find_user_by_login(l[:user][:login]) }
-                       else
-                         domain.users
-                       end
-                     end
 
-      users_to_add = list.flat_map do |user_hash|
+      intermediate_users = list.flat_map do |user_hash|
         user = user_hash[:user] || user_hash[:login]
         desired_roles = user_hash[:role] || user_hash[:roles] || 'readOnlyUser'
         begin
-          login, roles = verify_user_to_add(user, desired_roles, options.merge(domain_users: domain_users, project_users: project_users, roles: role_list))
-          [{ login: login, roles: roles }]
-        rescue
-          []
+          login, roles = resolve_roles(user, desired_roles, options.merge(project_users: project_users, roles: role_list))
+          [{ :type => :successful, user: login, roles: roles }]
+        rescue => e
+          [{ :type => :failed, :reason => e.message, user: login, roles: roles }]
         end
       end
-      payloads = users_to_add.map { |u| generate_user_payload(u[:login], 'ENABLED', u[:roles]) }
-      url = "#{uri}/users"
+
+      # User can fail pre sending to API during resolving roles. We add only users that passed that step.
+      users_by_type = intermediate_users.group_by { |u| u[:type] }
+      users_to_add = users_by_type[:successful] || []
+
+      payloads = users_to_add.map { |u| generate_user_payload(u[:user], 'ENABLED', u[:roles]) }
       results = payloads.each_slice(100).map do |payload|
-        client.post(url, 'users' => payload)
+        client.post("#{uri}/users", 'users' => payload)
       end
-      results.flat_map { |x| x['projectUsersUpdateResult'].flat_map { |k, v| v.map { |v_2| { type: k.to_sym, uri: v_2 } } } }
+      # this ugly line turns the hash of errors into list of errors with types so we can process them easily
+      typed_results = results.flat_map { |x| x['projectUsersUpdateResult'].flat_map { |k, v| v.map { |v_2| v_2.is_a?(String) ? { type: k.to_sym, user: v_2 } : GoodData::Helpers.symbolize_keys(v_2).merge(type: k.to_sym) } } }
+      # we have to concat errors from role resolution and API result
+      typed_results + (users_by_type[:failed] || [])
     end
 
     alias_method :add_users, :set_users_roles
@@ -1296,6 +1356,33 @@ module GoodData
 
     def update_from_blueprint(blueprint, options = {})
       GoodData::Model::ProjectCreator.migrate(options.merge(spec: blueprint, token: options[:auth_token], client: client, project: self))
+    end
+
+    def resolve_roles(login, desired_roles, options = {})
+      user = if login.is_a?(String) && login.include?('@')
+               '/gdc/account/profile/' + login
+             elsif login.is_a?(String)
+               login
+             elsif login.is_a?(Hash) && login[:login]
+               '/gdc/account/profile/' + login[:login]
+             elsif login.is_a?(Hash) && login[:uri]
+               login[:uri]
+             elsif login.respond_to?(:uri) && login.uri
+               login.uri
+             elsif login.respond_to?(:login) && login.login
+               '/gdc/account/profile/' + login.login
+             else
+               fail "Unsupported user specification #{login}"
+             end
+
+      role_list = options[:roles] || roles
+      desired_roles = Array(desired_roles)
+      roles = desired_roles.map do |role_name|
+        role = get_role(role_name, role_list)
+        fail ArgumentError, "Invalid role '#{role_name}' specified for user '#{user.email}'" if role.nil?
+        role.uri
+      end
+      [user, roles]
     end
 
     private

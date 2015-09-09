@@ -1,14 +1,16 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'simplecov'
 require 'pmap'
 require 'rspec'
-require 'coveralls'
 require 'pathname'
 require 'webmock/rspec'
 
 WebMock.disable!
-Coveralls.wear_merged!
 
 # Automagically include all helpers/*_helper.rb
 
@@ -24,6 +26,8 @@ end
 include GoodData::Helpers
 
 RSpec.configure do |config|
+  config.deprecation_stream = File.open('deprecations.txt', 'w')
+
   config.include BlueprintHelper
   config.include CliHelper
   config.include ConnectionHelper
@@ -57,7 +61,7 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     # TODO: Setup test project
-    GoodData.logging_on
+    GoodData.logging_off
   end
 
   config.after(:suite) do
@@ -66,8 +70,7 @@ RSpec.configure do |config|
 end
 
 SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter[
-  SimpleCov::Formatter::HTMLFormatter,
-  Coveralls::SimpleCov::Formatter
+  SimpleCov::Formatter::HTMLFormatter
 ]
 
 SimpleCov.start do

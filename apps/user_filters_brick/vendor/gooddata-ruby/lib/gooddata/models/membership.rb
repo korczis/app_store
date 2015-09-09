@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'multi_json'
 require 'pmap'
@@ -381,7 +385,7 @@ module GoodData
     end
 
     def to_hash
-      tmp = content.merge(meta).merge('uri' => uri).symbolize_keys
+      tmp = GoodData::Helpers.symbolize_keys(content.merge(meta).merge('uri' => uri))
       [
         [:userRoles, :role],
         [:companyName, :company_name],

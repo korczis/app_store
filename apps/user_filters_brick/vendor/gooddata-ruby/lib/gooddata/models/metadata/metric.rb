@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require_relative '../../goodzilla/goodzilla'
 require_relative '../../mixins/mixins'
@@ -8,8 +12,6 @@ require_relative 'metadata'
 module GoodData
   # Metric representation
   class Metric < MdObject
-    attr_reader :json
-
     include GoodData::Mixin::Lockable
 
     alias_method :to_hash, :json
@@ -24,7 +26,7 @@ module GoodData
       # @option options [Boolean] :full if passed true the subclass can decide to pull in full objects. This is desirable from the usability POV but unfortunately has negative impact on performance so it is not the default
       # @return [Array<GoodData::MdObject> | Array<Hash>] Return the appropriate metadata objects or their representation
       def all(options = { :client => GoodData.connection, :project => GoodData.project })
-        query('metrics', Metric, options)
+        query('metric', Metric, options)
       end
 
       def xcreate(metric, options = { :client => GoodData.connection, :project => GoodData.project })
@@ -135,9 +137,8 @@ module GoodData
         :client => client,
         :project => project
       }
-
       res = GoodData::ReportDefinition.execute(opts.merge(:left => self))
-      res && res[0][0]
+      res.data[0][0] if res && !res.empty?
     end
 
     def expression

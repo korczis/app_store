@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require 'pp'
 require 'hashie'
@@ -10,8 +14,8 @@ require_relative '../../client'
 
 # translate given params (with dots) to json-like params
 def load_undot(filename)
-  p = MultiJson.load(File.read(filename)).extend(Hashie::Extensions::DeepMerge)
-  p.undot
+  p = MultiJson.load(File.read(filename))
+  GoodData::Helper.undot(GoodData::Helper::DeepMergeableHash[p])
 end
 
 GoodData::CLI.module_eval do

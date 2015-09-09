@@ -1,3 +1,9 @@
+# encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
 require 'gooddata'
 
 describe "Object export between projects", :constraint => 'slow' do
@@ -5,9 +11,9 @@ describe "Object export between projects", :constraint => 'slow' do
     @client = ConnectionHelper.create_default_connection
 
     spec = MultiJson.load(File.read("./spec/data/blueprints/test_project_model_spec.json"), :symbolize_keys => true)
-
-    @source_project = @client.create_project_from_blueprint(spec, auth_token: ConnectionHelper::GD_PROJECT_TOKEN)
-    @target_project = @client.create_project_from_blueprint(spec, auth_token: ConnectionHelper::GD_PROJECT_TOKEN)
+    
+    @source_project = @client.create_project_from_blueprint(spec, token: ConnectionHelper::GD_PROJECT_TOKEN, environment: ProjectHelper::ENVIRONMENT)
+    @target_project = @client.create_project_from_blueprint(spec, token: ConnectionHelper::GD_PROJECT_TOKEN, environment: ProjectHelper::ENVIRONMENT)
   end
 
   after(:all) do

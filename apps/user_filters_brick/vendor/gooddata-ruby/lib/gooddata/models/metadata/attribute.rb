@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require_relative '../metadata'
 
@@ -21,7 +25,7 @@ module GoodData
       # @option options [Boolean] :full if passed true the subclass can decide to pull in full objects. This is desirable from the usability POV but unfortunately has negative impact on performance so it is not the default
       # @return [Array<GoodData::MdObject> | Array<Hash>] Return the appropriate metadata objects or their representation
       def all(options = { :client => GoodData.connection, :project => GoodData.project })
-        query('attributes', Attribute, options)
+        query('attribute', Attribute, options)
       end
 
       # Finds the value of an atribute and gives you the textual form for the label that is acquired by calling primary_label method
@@ -99,6 +103,8 @@ module GoodData
         project.create_metric("SELECT #{a_type.to_s.upcase}([#{uri}])", title: a_title, extended_notation: false)
       end
     end
+
+    alias_method :create_measure, :create_metric
 
     # For an element id find values (titles) for all display forms. Element id can be given as both number id or URI as a string beginning with /
     # @param [Object] element_id Element identifier either Number or a uri as a String

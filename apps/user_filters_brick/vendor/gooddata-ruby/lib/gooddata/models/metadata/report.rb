@@ -1,4 +1,8 @@
 # encoding: UTF-8
+#
+# Copyright (c) 2010-2015 GoodData Corporation. All rights reserved.
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 require_relative '../metadata'
 require_relative 'metadata'
@@ -16,7 +20,7 @@ module GoodData
       # @option options [Boolean] :full if passed true the subclass can decide to pull in full objects. This is desirable from the usability POV but unfortunately has negative impact on performance so it is not the default
       # @return [Array<GoodData::MdObject> | Array<Hash>] Return the appropriate metadata objects or their representation
       def all(options = { :client => GoodData.connection, :project => GoodData.project })
-        query('reports', Report, options)
+        query('report', Report, options)
       end
 
       def create(options = { :client => GoodData.connection, :project => GoodData.project })
@@ -65,6 +69,33 @@ module GoodData
       self
     end
 
+    # Add a report definition to a report. This will show on a UI as a new version.
+    #
+    # @param report_definition [GoodData::ReportDefinition | String] Report definition to add. Either it can be a URI of a report definition or an actual report definition object.
+    # @return [GoodData::Report] Return self
+    def add_definition!(report_definition)
+      res = add_definition(report_definition)
+      res.save
+    end
+
+    # Returns the newest (current version) report definition as an object
+    #
+    # @return [GoodData::ReportDefinition] Returns the newest report defintion
+    def definition
+      project.report_definitions(latest_report_definition_uri)
+    end
+
+    alias_method :latest_report_definition, :definition
+
+    # Returns the newest (current version) report definition uri
+    #
+    # @return [String] Returns uri of the newest report defintion
+    def definition_uri
+      definition_uris.last
+    end
+
+    alias_method :latest_report_definition_uri, :definition_uri
+
     # Gets a report definitions (versions) of this report as objects.
     #
     # @return [Array<GoodData::ReportDefinition>] Returns list of report definitions. Oldest comes first
@@ -103,9 +134,9 @@ module GoodData
       end
 
       if result.empty?
-        client.create(EmptyResult, result)
+        client.create(ReportDataResult, data: [], top: 0, left: 0, project: project)
       else
-        client.create(ReportDataResult, result)
+        ReportDataResult.from_xtab(result, client: client, project: project)
       end
     end
 
@@ -124,20 +155,6 @@ module GoodData
       result = client.post('/gdc/xtab2/executor3', 'report_req' => { 'report' => uri })
       result1 = client.post('/gdc/exporter/executor', :result_req => { :format => format, :result => result })
       client.poll_on_code(result1['uri'], options.merge(process: false))
-    end
-
-    # Returns the newest (current version) report definition uri
-    #
-    # @return [String] Returns uri of the newest report defintion
-    def latest_report_definition_uri
-      definition_uris.last
-    end
-
-    # Returns the newest (current version) report definition as an object
-    #
-    # @return [GoodData::ReportDefinition] Returns the newest report defintion
-    def latest_report_definition
-      project.report_definitions(latest_report_definition_uri)
     end
 
     # Returns the newest (current version) report definition uri
@@ -190,6 +207,35 @@ module GoodData
       end
       new_defs.pmap(&:save)
       self
+    end
+
+    ## Update report definition and reflect the change in report
+    #
+    # @param [Hash] opts Options
+    # @option opts [Boolean] :new_definition (true) If true then new definition will be created
+    # @return [GoodData::ReportDefinition] Updated and saved report definition
+    def update_definition(opts = { :new_definition => true }, &block)
+      # TODO: Cache the latest report definition somehow
+      repdef = definition.dup
+
+      block.call(repdef, self) if block_given?
+
+      if opts[:new_definition]
+        new_def = GoodData::ReportDefinition.create(:client => client, :project => project)
+
+        rd = repdef.json['reportDefinition']
+        rd.delete('links')
+        %w(author uri created identifier updated contributor).each { |k| rd['meta'].delete(k) }
+        new_def.json['reportDefinition'] = rd
+        new_def.save
+
+        add_definition!(new_def)
+        return new_def
+      else
+        repdef.save
+      end
+
+      repdef
     end
   end
 end
