@@ -1,10 +1,11 @@
 PATH
-  remote: gooddata_connectors_ads-0.0.4
+  remote: gooddata_connectors_ads-0.0.5
   specs:
-    gooddata_connectors_ads (0.0.2)
+    gooddata_connectors_ads (0.0.5)
       erubis
       gooddata-dss-jdbc
       hashie
+      peach
       sequel
 
 PATH
@@ -16,10 +17,9 @@ PATH
       gooddata
 
 PATH
-  remote: gooddata_connectors_metadata-0.0.2
+  remote: gooddata_connectors_metadata-0.0.3
   specs:
-    gooddata_connectors_metadata (0.0.2)
-      activesupport (= 4.2.3)
+    gooddata_connectors_metadata (0.0.3)
       aws-sdk
       gooddata (~> 0.6, >= 0.6.12)
       hashie (~> 3.3, >= 3.3.2)
@@ -27,15 +27,15 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (4.2.3)
+    activesupport (4.2.4)
       i18n (~> 0.7)
       json (~> 1.7, >= 1.7.7)
       minitest (~> 5.1)
       thread_safe (~> 0.3, >= 0.3.4)
       tzinfo (~> 1.1)
-    aws-sdk (1.64.0)
-      aws-sdk-v1 (= 1.64.0)
-    aws-sdk-v1 (1.64.0)
+    aws-sdk (1.66.0)
+      aws-sdk-v1 (= 1.66.0)
+    aws-sdk-v1 (1.66.0)
       json (~> 1.4)
       nokogiri (>= 1.4.4)
     coderay (1.1.0)
@@ -48,7 +48,7 @@ GEM
     faraday_middleware (0.10.0)
       faraday (>= 0.7.4, < 0.10)
     ffi (1.9.3-java)
-    gli (2.13.1)
+    gli (2.13.2)
     gooddata (0.6.18)
       activesupport (~> 4.1, >= 4.1.0)
       aws-sdk (~> 1.45)
@@ -70,7 +70,7 @@ GEM
       terminal-table (~> 1.4, >= 1.4.5)
     gooddata-dss-jdbc (0.1.7)
     hashie (3.4.2)
-    highline (1.7.2)
+    highline (1.7.3)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
     i18n (0.7.0)
@@ -78,12 +78,13 @@ GEM
     json_pure (1.8.2)
     method_source (0.8.2)
     mime-types (2.6.1)
-    minitest (5.7.0)
+    minitest (5.8.0)
     multi_json (1.11.2)
     multipart-post (2.0.0)
     netrc (0.10.3)
     nokogiri (1.6.6.2-java)
     parseconfig (1.0.6)
+    peach (0.5.1)
     pmap (1.0.2)
     pry (0.9.12.6-java)
       coderay (~> 1.0)
@@ -103,7 +104,7 @@ GEM
     salesforce_bulk_query (0.2.0)
       json (~> 1.8)
       xml-simple (~> 1.1)
-    sequel (4.24.0)
+    sequel (4.26.0)
     slop (3.6.0)
     spoon (0.0.4)
       ffi
@@ -123,5 +124,5 @@ DEPENDENCIES
   gooddata-dss-jdbc
   gooddata_connectors_ads!
   gooddata_connectors_base!
-  gooddata_connectors_metadata (= 0.0.2)!
+  gooddata_connectors_metadata (= 0.0.3)!
   terminal-table (= 1.4.5)
