@@ -22,7 +22,7 @@ module GoodData
     # @return [Boolean]
     def self.get_filters(file, options = {})
       values = get_values(file, options)
-      reduce_results(values)
+      reduce_results(values, options)
     end
 
     # Function that tells you if the file should be read line_wise. This happens
@@ -66,15 +66,16 @@ module GoodData
       results = options[:labels].mapcat do |label|
         column = label[:column] || Range.new(1, -1)
         values = column.is_a?(Range) ? line.slice(column) : [line[column]]
-        [create_filter(label, values.compact)]
+        [create_filter(label, values.compact, options)]
       end
       [login, results]
     end
 
-    def self.create_filter(label, values)
+    def self.create_filter(label, values, options = {})
+      # false_value = options[:false_value] || '__FALSE__'
       {
         :label => label[:label],
-        :values => values,
+        :values => values, #.include?(false_value) ? [] : values,
         :over => label[:over],
         :to => label[:to]
       }
@@ -85,15 +86,16 @@ module GoodData
     #
     # @param options [Hash]
     # @return [Array]
-    def self.reduce_results(data)
-      data.map { |k, v| { login: k, filters: UserFilterBuilder.collect_labels(v) } }
+    def self.reduce_results(data, options = {})
+      data.map { |k, v| { login: k, filters: UserFilterBuilder.collect_labels(v, options) } }.reject { |x| x[:filters].empty? }
     end
 
     # Groups the values by particular label. And passes each group to deduplication
     # @param options [Hash]
     # @return
-    def self.collect_labels(data)
-      data.group_by { |x| [x[:label], x[:over], x[:to]] }.map { |l, v| { label: l[0], over: l[1], to: l[2], values: UserFilterBuilder.collect_values(v) } }
+    def self.collect_labels(data, options = {})
+      false_value = options[:false_value] || '__FALSE__'
+      data.group_by { |x| [x[:label], x[:over], x[:to]] }.map { |l, v| { label: l[0], over: l[1], to: l[2], values: UserFilterBuilder.collect_values(v) } }.reject { |x| x[:values].empty? }.each { |x| x[:values] = x[:values].include?(false_value) ? [] : x[:values] }
     end
 
     # Collects specific values and deduplicates if necessary
@@ -215,9 +217,9 @@ module GoodData
           nil
         end
       end
-      expression = if element_uris.compact.empty? && options[:restrict_if_missing_all_values] && options[:type] == :muf
+      expression = if element_uris.compact.empty? && options[:type] == :muf
                      '1 <> 1'
-                   elsif element_uris.compact.empty? && options[:restrict_if_missing_all_values] && options[:type] == :variable
+                   elsif element_uris.compact.empty? && options[:type] == :variable
                      nil
                    elsif element_uris.compact.empty?
                      'TRUE'
@@ -262,8 +264,7 @@ module GoodData
       small_labels = get_small_labels(labels_cache)
       lookups_cache = create_lookups_cache(small_labels)
       attrs_cache = create_attrs_cache(filters, options)
-
-      create_filter_proc = Proc.new do |login, f|      
+      create_filter_proc = proc do |login, f|
         expression, errors = create_expression(f, labels_cache, lookups_cache, attrs_cache, options)
         profiles_uri = if options[:type] == :muf
                          '/gdc/account/profile/' + login
@@ -272,7 +273,7 @@ module GoodData
                        else
                          fail 'Unsuported type in maqlify_filters.'
                        end
-      
+
         if profiles_uri && expression
           [create_user_filter(expression, profiles_uri)] + errors
         else
@@ -282,22 +283,22 @@ module GoodData
 
       # if fail early process until first error
       results = if fail_early
-        x = filters.inject([true, []]) do |(r, a), e|
-          login = e[:login]
-          if r
-            y = e[:filters].pmapcat { |f| create_filter_proc.call(login, f) }
-            [!y.any? { |r| r[:type] == :error }, a.concat(y)]
-          else
-            [false, a]
-          end
-        end
-        x.last
-      else
-        filters.flat_map do |filter|
-          login = filter[:login]
-          filter[:filters].pmapcat { |f| create_filter_proc.call(login, f) }
-        end
-      end
+                  x = filters.inject([true, []]) do |(enough, a), e|
+                    login = e[:login]
+                    if enough
+                      y = e[:filters].pmapcat { |f| create_filter_proc.call(login, f) }
+                      [!y.any? { |r| r[:type] == :error }, a.concat(y)]
+                    else
+                      [false, a]
+                    end
+                  end
+                  x.last
+                else
+                  filters.flat_map do |filter|
+                    login = filter[:login]
+                    filter[:filters].pmapcat { |f| create_filter_proc.call(login, f) }
+                  end
+                end
       results.group_by { |i| i[:type] }.values_at(:filter, :error).map { |i| i || [] }
     end
 
@@ -341,7 +342,6 @@ module GoodData
       dry_run = options[:dry_run]
       to_create, to_delete = execute(filters, var.user_values, VariableUserFilter, options.merge(type: :variable))
       return [to_create, to_delete] if dry_run
-
       # TODO: get values that are about to be deleted and created and update them.
       # This will make sure there is no downitme in filter existence
       unless options[:do_not_touch_filters_that_are_not_mentioned]
@@ -355,7 +355,6 @@ module GoodData
     end
 
     def self.execute_mufs(user_filters, options = {})
-      # fail_early = options[:fail_early] == false ? false : true
       client = options[:client]
       project = options[:project]
       ignore_missing_values = options[:ignore_missing_values]
@@ -388,6 +387,7 @@ module GoodData
           }
           res = client.post("/gdc/md/#{project.pid}/userfilters", payload)
 
+          # turn the errors from hashes into array of hashes
           res['userFiltersUpdateResult'].flat_map { |k, v| v.map { |r| { status: k.to_sym, user: r, type: :create } } }.map { |result| result[:status] == :failed ? result.merge(GoodData::Helpers.symbolize_keys(result[:user])) : result }
         end
       end
@@ -481,7 +481,7 @@ module GoodData
                                verify_existing_users(filters, project: project, users_must_exist: users_must_exist, users_cache: users_cache)
                                maqlify_filters(filters, options.merge(users_cache: users_cache, users_must_exist: users_must_exist))
                              end
-                             
+
       fail GoodData::FilterMaqlizationError, errors if !ignore_missing_values && !errors.empty?
       filters = user_filters.map { |data| client.create(klass, data, project: project) }
       resolve_user_filters(filters, project_filters)
@@ -496,6 +496,16 @@ module GoodData
       filters.map do |filter|
         if filter.is_a?(Hash)
           filter
+        elsif filter[2].is_a?(Array)
+          {
+            :login => filter.first,
+            :filters => [
+              {
+                :label => filter[1],
+                :values => []
+              }
+            ]
+          }
         else
           {
             :login => filter.first,

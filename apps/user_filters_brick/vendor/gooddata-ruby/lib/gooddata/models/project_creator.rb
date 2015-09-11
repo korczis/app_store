@@ -119,10 +119,10 @@ module GoodData
             { priority: 3, cascade_drops: true, preserve_data: true },
             { priority: 4, cascade_drops: true, preserve_data: false }
           ]
-          stuff = chunks.select { |chunk| chunk['updateScript']['maqlDdlChunks'] }.map {|chunk| { cascade_drops: chunk['updateScript']['cascadeDrops'], preserve_data: chunk['updateScript']['preserveData'], maql: chunk['updateScript']['maqlDdlChunks'], orig: chunk}}
-          results = GoodData::Helpers.join(rules, stuff, [:cascade_drops, :preserve_data], [:cascade_drops, :preserve_data], inner: true).sort_by {|l| l[:priority]}
+          stuff = chunks.select { |chunk| chunk['updateScript']['maqlDdlChunks'] }.map { |chunk| { cascade_drops: chunk['updateScript']['cascadeDrops'], preserve_data: chunk['updateScript']['preserveData'], maql: chunk['updateScript']['maqlDdlChunks'], orig: chunk } }
+          results = GoodData::Helpers.join(rules, stuff, [:cascade_drops, :preserve_data], [:cascade_drops, :preserve_data], inner: true).sort_by { |l| l[:priority] }
 
-          pick = results.find {|r| r.values_at(:cascade_drops, :preserve_data) == preference.values_at(:cascade_drops, :preserve_data)} || results.first
+          pick = results.find { |r| r.values_at(:cascade_drops, :preserve_data) == preference.values_at(:cascade_drops, :preserve_data) } || results.first
           pick[:orig] if pick
         end
       end

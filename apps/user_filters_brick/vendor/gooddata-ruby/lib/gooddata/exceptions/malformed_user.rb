@@ -4,20 +4,12 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-# GoodData Module
 module GoodData
-  VERSION = '0.6.23'
+  class MalformedUserError < RuntimeError
+    DEFAULT_MSG = 'User is malformed'
 
-  class << self
-    # Version
-    def version
-      VERSION
-    end
-
-    # Identifier of gem version
-    # @return Formatted gem version
-    def gem_version_string
-      "gooddata-gem/#{VERSION}"
+    def initialize(msg = DEFAULT_MSG)
+      super(msg)
     end
   end
 end

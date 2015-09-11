@@ -33,6 +33,7 @@ module GoodData::Bricks
       end
 
       puts "Synchronizing in mode \"#{mode}\""
+      begin
       results = case mode
                 when 'sync_project'
                   CSV.foreach(File.open(data_source.realize(params), 'r:UTF-8'), headers: csv_with_headers, return_headers: false, encoding: 'utf-8') do |row|
@@ -52,13 +53,14 @@ module GoodData::Bricks
                   CSV.foreach(File.open(data_source.realize(params), 'r:UTF-8'), headers: csv_with_headers, return_headers: false, encoding: 'utf-8') do |row|
                     filters << row.to_hash
                   end
-                  filters.group_by { |u| u['pid'] }.flat_map do |project_id, new_filters|
+                  res = filters.group_by { |u| u['pid'] }.flat_map do |project_id, new_filters|
                     fail "Project id cannot be empty" if project_id.blank?
                     project = client.projects(project_id)
                     filters_to_load = GoodData::UserFilterBuilder::get_filters(new_filters, symbolized_config)
                     puts "Synchronizing #{filters_to_load.count} filters in project #{project.pid}"
                     project.add_data_permissions(filters_to_load, restrict_if_missing_all_values: true, domain: domain, fail_early: false)
                   end
+                  res.reduce { |a, e| e.keys.each { |k| a[k].concat(e[k]) } }
                 when 'sync_one_project_based_on_custom_id'
                   md = project.metadata
                   if md['GOODOT_CUSTOM_PROJECT_ID']
@@ -73,7 +75,13 @@ module GoodData::Bricks
                     fail "Project \"#{project.pid}\" metadata does not contain key GOODOT_CUSTOM_PROJECT_ID. We are unable to get the value to filter users."
                   end
                 end
-
+      rescue GoodData::FilterMaqlizationError => e
+        puts "There was an error during values verification"
+        headers = e.errors.flat_map { |e| e.keys }.uniq
+        table = Terminal::Table.new :headings => headers, :rows => e.errors.map {|x| x.values_at(*headers)}
+        puts "\n#{table.to_s}"
+        fail 'There was an error syncing user filters.'
+      end
       results = results[:results]
       successes = results.select { |r| r[:status] == :successful }
       errors = results.select { |r| r[:status] == :failed }

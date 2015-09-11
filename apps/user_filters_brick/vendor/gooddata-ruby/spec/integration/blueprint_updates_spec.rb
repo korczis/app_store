@@ -43,7 +43,6 @@ describe 'Create project using GoodData client', :constraint => 'slow' do
   end
 
   it "should be able to add anchor's labels" do
-    GoodData.logging_http_on
     bp = @project.blueprint
     bp.datasets('dataset.commits').change do |d|
       d.add_label('label.commits.factsof.id',
