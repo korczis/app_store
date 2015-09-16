@@ -139,7 +139,7 @@ The structure of the file should look like this:
  * **feed_version** - the version in FEED file to which the uploaded file is connected ( **only one version of entity can be present in manifest file** - you cannot have Account v1.0 and Account v2.0 in one manifest)
  * **num_rows** **(optional)** - number of rows in uploaded file
  * **md5** - MD5 checksum of uploaded file
- * **export_type** **(optional)** - possible values (inc/full). Default is inc. It marks if the file in manifest is full or increment. It changes how the file is integrated to database.
+ * **export_type** **(optional)** - possible values (inc/full). Default is inc. It marks if the file in manifest is full or increment. It changes how the file is integrated to database. 
 
 #### Example:
 
@@ -168,6 +168,7 @@ The structure of the configuration file for S3 data source looks like this:
  * **manifest_process_type** (move/history) - if set to move, the manifest file will be moved to processed folder. If set to history, the manifest will stay.
  * **number_of_manifest_in_one_run** - maximum number of manifests which is processed in one run. Default value is 5
  * **delete_data_after_processing** (true/false) - if set to TRUE, the data will be delete from the source, after processing. Default FALSE.
+ * **use_link_file** (true/false) - if set to TRUE, the link file functionality will be enabled. More info about this functionality is at the end of this document.
  * **file_structure** - this section of the configuration is dedicated to structure of the file. This hints are need for CSV parsing when loading it to ADS. More information about each of the option can be found in Vertica documentation [link](http://my.vertica.com/docs/6.1.x/HTML/index.htm#1668.htm).
     * **skip_rows** (optional) - number of skipped columns in CSV (used mainly to remove header from CSV file)
     * **column_separator** (optional) - the character which is separating fields in CSV
@@ -204,7 +205,15 @@ The time format can be changed as desired. The documentation of possible tags ca
             }
         }
 
+### Linked files
 
+In default setting the CSV downloader is downloading the data from the source and saving them to GoodData BDS. In case of bigger
+file this process can be quite time consuming and not wanted in all occasions. 
+
+If you can guarantee that file in source will not be deleted, you can use the link file functionality. In this case the CSV downloader will not
+download the data from source, but it will create LINK file on BDS with links to the source file. 
+
+The after you add additional settings to integrator, the files will be downloaded from source location directly by integrator.
 
 
 

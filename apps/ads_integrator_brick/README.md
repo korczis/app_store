@@ -163,6 +163,8 @@ There are few types of objects created in ADS after the execution of ADS integra
 
 ## Global integration settings
 
+This options are applied right after the configuration change 
+
  * **instance_id** - the ID of the ADS instance
  * **username** - the username of user which have access to given ADS instance
  * **password** - the password of user which have access to given ADS instance
@@ -171,8 +173,21 @@ There are few types of objects created in ADS after the execution of ADS integra
     * **default_strategy** (optional) (default -> data_vault) (options -> data_vault/merge) - this settings specified which strategy should be used for data integration. This cannot be change after first integration without full ADS wipe.
     * **number_of_batches_in_one_run** (optional) (default -> 5) - the number of batches which should be processed in one run of ADS integrator. In case, that you have lot of small batches it is faster to integrate them in one run.
     * **number_of_paraller_queries** (optional) (default -> 8) - the max number of parallel executions of COPY command.
+    * **number_of_paraller_integrations** (optional) (default -> 1) - the number of parallel integrations to stage tables. This option is controlling how many merge commands from source to stage will be executed in same time. 
     * **integration_group_size** (optional) (default -> 1) - the max number of files integrated by one COPY command. In case of lot of small files, this number should be bigger then 1.
+    * **join_files** (optional) (default -> false) - this option will take number of files specified in integration_group_size and compact them in to the one file. Then only this one file is copied by vertica Copy Command. 
+    * **finish_in_source** (optional) (default -> false) - then this options is set to true, the stage (stg) tables are not populated. The integration process will finish in source tables. Each run of ADS integrator will purge the source tables and load new data there.
+    * **recreate_source_tables** (optional) (default -> false) - when this option is set to true, the source tables are dropped and recreated in each run. Can be used with option source_projection in entity level configuration.
+    * **abort_on_error** (optional) (default -> true) - specify if the copy command is executed with abort_on_error option. If this option is false, the tool will put the errors to exception files and after the execution has finished the files are uploaded to BDS Error folder. Also the tool will fire notification event named "error-in-data-processing". This event can be consumed by notification functionality in DISC console.
+    * **ignored_system_fields** (optional) (default -> []) - the list of system fields, which should be ignored by during the integration. The fields will not be created in any tables.
+    * **remote** (optional) - this options must be set, if the linked files need to be processed by this tool. The linked files are described in CSV Downloader Brick documentation.
+        * **type** - (s3) - specify the type of the linked file source. Right now only s3 is supported. 
+        * **access_key** - specify the access key for the linked file source.
+        * **secret_key** - specify the secret key for the linked file source.
+        * **bucket** - specify the bucket for the linked file source.
 
+       
+     
 ### Example
 
     "ads_storage": {
@@ -187,6 +202,29 @@ There are few types of objects created in ADS after the execution of ADS integra
             "integration_group_size": 25,
         }
     }
+
+## Entity level settings
+
+This options are saved in downloader execution. Options are applied on all files downloaded after the configuration change. **All previously downloaded files will not be affected by this change**
+
+There is possibility to provide some configuration for ASD integration tool on the entity level of the configuration. All options should be present in custom part of the entity configuration.
+
+ * **hub** - the list of fields, which are creating primary key for the current entity. This is mandatory setting for ASD integrator to work. 
+ * **source_projection** (optional) - works only when the finish_in_source parameter is used. This enabled you to create your default projection when creating source tables. If this option is not used, the ASD Integrator is creating projection optimized for data integration.  
+    **order_by** - 
+    **segmented_by** 
+					"hub": [
+						"client_id",
+						"blast_msg_id",
+						"label_id"
+					],
+					"source_projection": {
+						"order_by": [
+							"client_id",
+							"blast_msg_id"
+						]
+					},
+
 
 
 
