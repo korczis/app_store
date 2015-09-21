@@ -98,6 +98,13 @@ More info in example_configuraion.json file in the SFDC Downloader folder.
 
 There are some special configurations possible for the Salesforce downloader on entity level. The example entity configuration can look like this: 
 
+
+ * **timestamp** - this value contains name of the field which should be used for incremental download from S3
+ * **ignored_fields** - (optional) ([]) - this setting contains collection of fields, which should be ignored when downloading data from Salesforce 
+ * **deleted_records** (optional) (true/false) - if this setting is enabled, the SFDC downloader will download the deleted records from Salesforce
+ 
+
+
 ### Example
  
     "Account": {
