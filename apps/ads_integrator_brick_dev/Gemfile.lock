@@ -17,7 +17,7 @@ PATH
       gooddata
 
 PATH
-  remote: gooddata_connectors_metadata-0.0.4
+  remote: gooddata_connectors_metadata-bds_implementation_devel
   specs:
     gooddata_connectors_metadata (0.0.4)
       aws-sdk
