@@ -32,37 +32,37 @@ FileUtils.mkdir_p('output')
 
 # Bundler hack
 require 'bundler/cli'
-Bundler::CLI.new.invoke(:install, [],:path => "gems", :retry => 3, :jobs => 4,:deployment => true)
+Bundler::CLI.new.invoke(:install, [],:path => "gems", :retry => 3, :jobs => 4)
 
-# Required gems
-require 'bundler/setup'
-require 'gooddata'
-require 'gooddata_connectors_metadata'
-require 'gooddata_connectors_ads'
-
-# Require executive brick
-require_relative 'execute_brick'
-
-include GoodData::Bricks
-
-# Prepare stack
-stack = [
-    LoggerMiddleware,
-    BenchMiddleware,
-    GoodDataCustomMiddleware,
-    GoodData::Connectors::Metadata::MetadataMiddleware,
-    GoodData::Connectors::Ads::AdsMiddleware,
-    ExecuteBrick
-]
-
-# Create pipeline
-p = GoodData::Bricks::Pipeline.prepare(stack)
-
-# Default script params
-$SCRIPT_PARAMS = {} if $SCRIPT_PARAMS.nil?
-
-# Setup params
-$SCRIPT_PARAMS['GDC_LOGGER'] = Logger.new(STDOUT)
-
-# Execute pipeline
-p.call($SCRIPT_PARAMS)
+# # Required gems
+# require 'bundler/setup'
+# require 'gooddata'
+# require 'gooddata_connectors_metadata'
+# require 'gooddata_connectors_ads'
+#
+# # Require executive brick
+# require_relative 'execute_brick'
+#
+# include GoodData::Bricks
+#
+# # Prepare stack
+# stack = [
+#     LoggerMiddleware,
+#     BenchMiddleware,
+#     GoodDataCustomMiddleware,
+#     GoodData::Connectors::Metadata::MetadataMiddleware,
+#     GoodData::Connectors::Ads::AdsMiddleware,
+#     ExecuteBrick
+# ]
+#
+# # Create pipeline
+# p = GoodData::Bricks::Pipeline.prepare(stack)
+#
+# # Default script params
+# $SCRIPT_PARAMS = {} if $SCRIPT_PARAMS.nil?
+#
+# # Setup params
+# $SCRIPT_PARAMS['GDC_LOGGER'] = Logger.new(STDOUT)
+#
+# # Execute pipeline
+# p.call($SCRIPT_PARAMS)
