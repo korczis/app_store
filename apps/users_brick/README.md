@@ -76,6 +76,74 @@ Typically you will have users in the project that are there for business reasons
 
 	"whitelists" : ["etl_admin@gooddata.com"]
 
+### Modes of authentication
+Modes of authentication tell the platform how the user can access it. Currently there are two values available.
+
+* password - User can access platform using his credentials
+* sso - User can access platform using SSO
+
+You can set up the synchronization in two ways
+
+1) globally for all synchronized users
+2) per user setup driven by data
+
+#### Globally for all users
+In many cases all users should receive the same setting so to make it more convenient you do not have to specify it in your data but you can provide a global setting in your process/schedule params
+
+    {
+      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" },
+      "sync_mode": "add_to_organization",
+      "organization": "gooddata-tomas-svarovsky",
+      "authentication_modes": "password"
+    }
+
+You can specify several values
+
+    {
+      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" },
+      "sync_mode": "add_to_organization",
+      "organization": "gooddata-tomas-svarovsky",
+      "authentication_modes": ["password", "sso"]
+    }
+
+Take note that this global setup takes precedence before data driven setup.
+
+#### Per user data driven setup
+Sometimes you need to be able to define things on more granular level and set each user with particular authentication mode.
+
+Typically data data would look something like this
+
+  login                 | first_name  | last_name      | authentication_modes  |
+------------------------|-------------|----------------|-----------------------|
+ jane.doe@example.com   | Jane        | Doe            | password              |
+ john.doe@example.com   | John        | Doe            | "password, sso"       |
+
+And the corresponding process params could look like this
+
+    {
+      "input_source": { "type": "web", "url": "some_file" },
+      "sync_mode": "add_to_organization",
+      "organization": "gooddata-tomas-svarovsky"
+    }
+
+Notice that there is no specification of global values in params so the brick will try to find the information in the data. You can specify several values in your data. Remember that in that case CSV field has to be quoted becase we are using separator inside a field. The data are by default exepcted in the column named *authentication_modes*.
+
+On some occassions the information will be in the data but provided in column with a different name. For your convenience you can provide the name of custom column in the params. Here is an example of data
+
+  login                 | first_name  | last_name      | my_authentication_modes_column  |
+------------------------|-------------|----------------|---------------------------------|
+ jane.doe@example.com   | Jane        | Doe            | password                        |
+ john.doe@example.com   | John        | Doe            | "password, sso"                 |
+
+And here you have corresponding process params
+
+    {
+      "input_source": { "type": "web", "url": "some_file" },
+      "sync_mode": "add_to_organization",
+      "organization": "gooddata-tomas-svarovsky",
+      "authentication_modes_column": "my_authentication_modes_column"
+    }
+
 ## Modes of synchronization
 
 The brick can operate in different modes. We implemented several modes that we find useful in our day to day usage. If something that would be useful for you is not here let us know the list is not meant to be definitive.
@@ -184,6 +252,7 @@ The following list contains the properties that are useful to specify for updati
 * Email - email (email_column)
 * SSO Provider - sso_provider (sso_provider_column)
 * Project ID - project_id (multiple_projects_column)
+* Authentication modes - authentication_modes (authentication_modes_column)
 
 For instance, if in your data first names would be stored in a column called "x", you would pass as param something along the lines of
 

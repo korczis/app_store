@@ -14,6 +14,7 @@ p = GoodData::Bricks::Pipeline.prepare([
   LoggerMiddleware,
   BenchMiddleware,
   GoodDataMiddleware,
+  AWSMiddleware,
   FsProjectDownloadMiddleware.new(:source => :staging),
   FsProjectUploadMiddleware.new(:destination => :staging),
   WarehouseMiddleware,

@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'gooddata'
+gem 'gooddata', :path => '/Users/fluke/sandbox/gooddata-ruby'
 gem "twitter"
 gem "pony"
 gem "terminal-table"

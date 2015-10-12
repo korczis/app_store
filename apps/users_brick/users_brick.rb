@@ -38,19 +38,26 @@ module GoodData
 
         domain = client.domain(domain_name)
 
-        first_name_column   = params['first_name_column'] || 'first_name'
-        last_name_column    = params['last_name_column'] || 'last_name'
-        login_column        = params['login_column'] || 'login'
-        password_column     = params['password_column'] || 'password'
-        email_column        = params['email_column'] || 'email'
-        role_column         = params['role_column'] || 'role'
-        sso_provider_column = params['sso_provider_column'] || 'sso_provider'
+        first_name_column           = params['first_name_column'] || 'first_name'
+        last_name_column            = params['last_name_column'] || 'last_name'
+        login_column                = params['login_column'] || 'login'
+        password_column             = params['password_column'] || 'password'
+        email_column                = params['email_column'] || 'email'
+        role_column                 = params['role_column'] || 'role'
+        sso_provider_column         = params['sso_provider_column'] || 'sso_provider'
+        authentication_modes_column = params['authentication_modes_column'] || 'authentication_modes'
 
         sso_provider = params['sso_provider']
+        authentication_modes = params['authentication_modes'] || []
         ignore_failures = params['ignore_failures'] == 'true' || params['ignore_failures'] == true ? true : false
 
         new_users = []
         CSV.foreach(File.open(data_source.realize(params), 'r:UTF-8'), :headers => true, :return_headers => false, encoding: 'utf-8') do |row|
+          modes = if authentication_modes.empty?
+            row[authentication_modes_column] && row[authentication_modes_column].split(',').map(&:strip).map {|x| x.to_s.upcase}
+          else
+            authentication_modes
+          end
           new_users << {
             :first_name => row[first_name_column],
             :last_name => row[last_name_column],
@@ -59,6 +66,7 @@ module GoodData
             :email => row[email_column] || row[login_column],
             :role => row[role_column],
             :sso_provider => sso_provider || row[sso_provider_column],
+            :authentication_modes => modes,
             :pid => multiple_projects_column.nil? ? nil : row[multiple_projects_column]
           }.compact
         end

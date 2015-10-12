@@ -143,7 +143,6 @@ describe GoodData::Bricks::UserFiltersBrick do
           }
         })
       }.to raise_exception
-      binding.pry
     ensure
       tempfile.unlink
     end
