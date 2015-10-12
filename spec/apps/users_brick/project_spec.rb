@@ -27,8 +27,74 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   after(:all) do
-    @project_1 && @project_1.delete
-    @project_2 && @project_2.delete
+    # @project_1 && @project_1.delete
+    # @project_2 && @project_2.delete
+  end
+
+  it 'should be able to add users to domain with mode and SSO' do
+    domain = @client.domain('gooddata-tomas-svarovsky')
+    user_names = 2.times.map { |i| find_unused_domain_name(@domain) }
+    begin
+      tempfile = Tempfile.new('domain_sync')
+      CSV.open(tempfile.path, 'w') do |csv|
+        csv << [:login, :authentication_modes, :sso_provider]
+        csv << [user_names.first, 'PASSWORD, SSO', 'SALESFORCE']
+        csv << [user_names.last, 'SSO', 'SALESFORCE']
+      end
+
+      @project_1.upload_file(tempfile.path)
+      user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/users_brick', name: 'users_brick_example', type: :ruby)
+      user_process.execute('main.rb', params: {
+        'domain'        => @domain.name,
+        'input_source'  => Pathname(tempfile.path).basename.to_s,
+        'sync_mode'     => 'add_to_organization'
+      })
+    ensure
+      tempfile.unlink
+    end
+    fields = [:sso_provider, :authentication_modes]
+    expect(@domain.find_user_by_login(user_names.first).to_hash.slice(*fields)).to eq ({
+      sso_provider: "salesforce.com",
+      authentication_modes: ["PASSWORD", "SSO"]
+    })
+    expect(@domain.find_user_by_login(user_names.last).to_hash.slice(*fields)).to eq ({
+      sso_provider: "salesforce.com",
+      authentication_modes: ["SSO"]
+    })
+  end
+
+  it 'should be able to add users to domain with mode and SSO' do
+    domain = @client.domain('gooddata-tomas-svarovsky')
+    user_names = 2.times.map { |i| find_unused_domain_name(@domain) }
+    begin
+      tempfile = Tempfile.new('domain_sync')
+      CSV.open(tempfile.path, 'w') do |csv|
+        csv << [:login]
+        csv << [user_names.first]
+        csv << [user_names.last]
+      end
+
+      @project_1.upload_file(tempfile.path)
+      user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/users_brick', name: 'users_brick_example', type: :ruby)
+      user_process.execute('main.rb', params: {
+        'domain'                => @domain.name,
+        'input_source'          => Pathname(tempfile.path).basename.to_s,
+        'sync_mode'             => 'add_to_organization',
+        'sso_provider'          => 'salesforce.com',
+        'authentication_modes'  => 'PASSWORD'
+      })
+    ensure
+      tempfile.unlink
+    end
+    fields = [:sso_provider, :authentication_modes]
+    expect(@domain.find_user_by_login(user_names.first).to_hash.slice(*fields)).to eq ({
+      sso_provider: "salesforce.com",
+      authentication_modes: ["PASSWORD"]
+    })
+    expect(@domain.find_user_by_login(user_names.last).to_hash.slice(*fields)).to eq ({
+      sso_provider: "salesforce.com",
+      authentication_modes: ["PASSWORD"]
+    })
   end
 
   it 'should be able to add users to domain' do
@@ -60,7 +126,7 @@ describe GoodData::Bricks::UsersBrick do
     it 'should be able to add users to domain AND project' do
       domain = @client.domain('gooddata-tomas-svarovsky')
       unused_user_name = find_unused_domain_name(@domain)
-      used_user = domain.users.sample
+      used_user = domain.users.to_a.sample
       begin
         tempfile = Tempfile.new('domain_sync')
         CSV.open(tempfile.path, 'w') do |csv|
@@ -86,7 +152,7 @@ describe GoodData::Bricks::UsersBrick do
     end
 
     it 'should add users to project from domain' do
-      users = @domain.users.sample(10)
+      users = @domain.users.to_a.sample(10)
       begin
         tempfile = Tempfile.new('project_sync')
 
@@ -116,7 +182,7 @@ describe GoodData::Bricks::UsersBrick do
     end
 
     it 'should add users to project from domain' do
-      users = @domain.users.sample(10)
+      users = @domain.users.to_a.sample(10)
       begin
         tempfile = Tempfile.new('project_sync')
 
@@ -144,7 +210,7 @@ describe GoodData::Bricks::UsersBrick do
         expect(users.pmap(&:role).map(&:identifier).uniq.count).to eq 1
 
         # remove a user and put him to whitelist
-        user = (@project_1.users - [@client.user]).sample
+        user = (@project_1.users.to_a - [@client.user]).sample
         user.disable
         user_process.execute('main.rb', params: {
           'domain'        => @domain.name,
@@ -152,7 +218,7 @@ describe GoodData::Bricks::UsersBrick do
           'sync_mode'     => 'sync_project',
           'whitelists'   => [user.login]
         })
-        expect(@project_1.users.count).to eq 10
+        expect(@project_1.users.count).to eq 11
 
         user_process.execute('main.rb', params: {
           'domain'            => @domain.name,
@@ -160,7 +226,7 @@ describe GoodData::Bricks::UsersBrick do
           'sync_mode'         => 'sync_project',
           'regexp_whitelists' => ['gooddata\.com']
         })
-        expect(@project_1.users.count).to eq 10
+        expect(@project_1.users.count).to eq 11
         user_process.execute('main.rb', params: {
           'domain'            => @domain.name,
           'input_source'      => Pathname(tempfile.path).basename.to_s,
@@ -174,7 +240,7 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   it 'should be able to add users to multiple projects' do
-    users = @domain.users.sample(10)
+    users = @domain.users.to_a.sample(10)
     headers = [:pid, :first_name, :last_name, :login, :password, :email, :role, :sso_provider]
     projects = [@project_1, @project_2]
     users_data = users.map { |u| u.to_hash.merge(pid: projects.sample.pid, role: ['admin', 'editor'].sample) }
@@ -207,7 +273,7 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   it 'should be able to add users to multiple projects through per project ETL' do
-    users = @domain.users.sample(10)
+    users = @domain.users.to_a.sample(10)
     headers = [:pid, :first_name, :last_name, :login, :password, :email, :role, :sso_provider]
     projects = [@project_1, @project_2]
     users_data = users.map { |u| u.to_hash.merge(pid: projects.sample.pid, role: ['admin', 'editor'].sample) }

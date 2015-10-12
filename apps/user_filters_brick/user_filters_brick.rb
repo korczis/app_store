@@ -8,7 +8,6 @@ module GoodData::Bricks
     end
 
     def call(params)
-
       client = params['GDC_GD_CLIENT'] || fail('client needs to be passed into a brick as "GDC_GD_CLIENT"')
       domain_name = params['domain']
       domain = client.domain(domain_name) if domain_name
@@ -18,9 +17,9 @@ module GoodData::Bricks
 
       config = params['filters_config']
       fail 'User filters brick requires configuration how the filter should be setup. For this use the param "filters_config"' if config.blank?
-      symbolized_config = config.deep_dup
-      symbolized_config.symbolize_keys!
-      symbolized_config[:labels].each { |l| l.symbolize_keys! }
+      symbolized_config = GoodData::Helpers.deep_dup(config)
+      symbolized_config = GoodData::Helpers.symbolize_keys(symbolized_config)
+      symbolized_config[:labels] = symbolized_config[:labels].map { |l| GoodData::Helpers.symbolize_keys(l) }
       headers_in_options = params['csv_headers'] == 'false' || true
 
       mode = params['sync_mode'] || 'sync_project'
