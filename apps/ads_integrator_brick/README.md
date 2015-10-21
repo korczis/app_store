@@ -171,7 +171,7 @@ This options are applied right after the configuration change
  * **server** - (optional) (default -> secure.gooddata.com) server setting for whitelabel instance
  * **options** - this section of the configuration for specific ads integration settings
     * **default_strategy** (optional) (default -> data_vault) (options -> data_vault/merge) - this settings specified which strategy should be used for data integration. This cannot be change after first integration without full ADS wipe.
-    * **number_of_batches_in_one_run** (optional) (default -> 5) - the number of batches which should be processed in one run of ADS integrator. In case, that you have lot of small batches it is faster to integrate them in one run.
+    * **number_of_batches_in_one_run** (optional) (default -> 1) - the number of batches which should be processed in one run of ADS integrator. In case, that you have lot of small batches it is faster to integrate them in one run.
     * **number_of_paraller_queries** (optional) (default -> 8) - the max number of parallel executions of COPY command.
     * **number_of_paraller_integrations** (optional) (default -> 1) - the number of parallel integrations to stage tables. This option is controlling how many merge commands from source to stage will be executed in same time. 
     * **integration_group_size** (optional) (default -> 1) - the max number of files integrated by one COPY command. In case of lot of small files, this number should be bigger then 1.
@@ -210,6 +210,7 @@ This options are saved in downloader execution. Options are applied on all files
 There is possibility to provide some configuration for ASD integration tool on the entity level of the configuration. All options should be present in custom part of the entity configuration.
 
  * **hub** - the list of fields, which are creating primary key for the current entity. This is mandatory setting for ASD integrator to work. 
+ * **fields_to_clean** - (optional) (default -> []) You can name fields here which will be cleaned inside of the copy command. For example if there is DECIMAL(30,15) in data and you have DECIMAL(30,10) in DB, the default copy command will fail. With clean on this field enabled, the DECIMAL in data will be trucanted to fit to DECIMAL in database. (Currently it works only on DECIMAL types) 
  * **source_projection** (optional) - works only when the finish_in_source parameter is used. This enabled you to create your default projection when creating source tables. If this option is not used, the ASD Integrator is creating projection optimized for data integration.  
     **order_by** - 
     **segmented_by** 
