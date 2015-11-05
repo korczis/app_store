@@ -105,6 +105,9 @@ All other types are threaded as string-255
     Account|1.0|Name|string-255|1
     Account|1.0|Attribute1|string-255|2
     Account|1.0|Attrubute2|string-255|3
+    Account|1.1|Name|string-255|1
+    Account|1.1|Attribute1|string-255|2
+    Account|1.1|Attrubute2|string-255|3
     Account|1.1|Attribute3|string-255|4
     User|1.0|ID|integer|1
     User|1.0|Name|string-255|2
@@ -169,6 +172,7 @@ The structure of the configuration file for S3 data source looks like this:
  * **number_of_manifest_in_one_run** - maximum number of manifests which is processed in one run. Default value is 5
  * **delete_data_after_processing** (true/false) - if set to TRUE, the data will be delete from the source, after processing. Default FALSE.
  * **use_link_file** (true/false) - if set to TRUE, the link file functionality will be enabled. More info about this functionality is at the end of this document.
+ * **ignore_check_sum** (true/false) - this options set to true will ignore the MD5 checksum when downloading the file 
  * **file_structure** - this section of the configuration is dedicated to structure of the file. This hints are need for CSV parsing when loading it to ADS. More information about each of the option can be found in Vertica documentation [link](http://my.vertica.com/docs/6.1.x/HTML/index.htm#1668.htm).
     * **skip_rows** (optional) - number of skipped columns in CSV (used mainly to remove header from CSV file)
     * **column_separator** (optional) - the character which is separating fields in CSV
