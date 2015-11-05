@@ -32,7 +32,6 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   it 'should be able to add users to domain with mode and SSO' do
-    domain = @client.domain('gooddata-tomas-svarovsky')
     user_names = 2.times.map { |i| find_unused_domain_name(@domain) }
     begin
       tempfile = Tempfile.new('domain_sync')
@@ -64,7 +63,6 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   it 'should be able to add users to domain with mode and SSO' do
-    domain = @client.domain('gooddata-tomas-svarovsky')
     user_names = 2.times.map { |i| find_unused_domain_name(@domain) }
     begin
       tempfile = Tempfile.new('domain_sync')
@@ -98,7 +96,6 @@ describe GoodData::Bricks::UsersBrick do
   end
 
   it 'should be able to add users to domain' do
-    domain = @client.domain('gooddata-tomas-svarovsky')
     user_name = find_unused_domain_name(@domain)
     begin
       tempfile = Tempfile.new('domain_sync')
@@ -124,9 +121,8 @@ describe GoodData::Bricks::UsersBrick do
   describe 'adding to project' do
 
     it 'should be able to add users to domain AND project' do
-      domain = @client.domain('gooddata-tomas-svarovsky')
       unused_user_name = find_unused_domain_name(@domain)
-      used_user = domain.users.to_a.sample
+      used_user = @domain.users.to_a.sample
       begin
         tempfile = Tempfile.new('domain_sync')
         CSV.open(tempfile.path, 'w') do |csv|
@@ -198,8 +194,9 @@ describe GoodData::Bricks::UsersBrick do
 
         user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/users_brick', name: 'users_brick_example', type: :ruby)
 
+
         # Users should be added
-        user_process.execute('main.rb', params: {
+        result1 = user_process.execute('main.rb', params: {
           'domain'        => @domain.name,
           'input_source'  => Pathname(tempfile.path).basename.to_s,
           'sync_mode'     => 'sync_project'
@@ -210,24 +207,32 @@ describe GoodData::Bricks::UsersBrick do
         expect(users.pmap(&:role).map(&:identifier).uniq.count).to eq 1
 
         # remove a user and put him to whitelist
+        # this should cause him not to be synchronized anymore
+        # and as a result there should still be only 10 users after sync
         user = (@project_1.users.to_a - [@client.user]).sample
         user.disable
-        user_process.execute('main.rb', params: {
+        result2 =user_process.execute('main.rb', params: {
           'domain'        => @domain.name,
           'input_source'  => Pathname(tempfile.path).basename.to_s,
           'sync_mode'     => 'sync_project',
           'whitelists'   => [user.login]
         })
-        expect(@project_1.users.count).to eq 11
+        expect(@project_1.users.count).to eq 10
 
-        user_process.execute('main.rb', params: {
+        # The same thing should be true here but the whitelist is defined
+        # in a different way
+        result3 = user_process.execute('main.rb', params: {
           'domain'            => @domain.name,
           'input_source'      => Pathname(tempfile.path).basename.to_s,
           'sync_mode'         => 'sync_project',
           'regexp_whitelists' => ['gooddata\.com']
         })
-        expect(@project_1.users.count).to eq 11
-        user_process.execute('main.rb', params: {
+        expect(@project_1.users.count).to eq 10
+
+        # Now we remove the whitelist. After execution there should be 11
+        # users in the project that one that we disabled should be added
+        # again
+        result4 = user_process.execute('main.rb', params: {
           'domain'            => @domain.name,
           'input_source'      => Pathname(tempfile.path).basename.to_s,
           'sync_mode'         => 'sync_project'
