@@ -1,0 +1,64 @@
+{
+  "name"       : "sailthru_downloader_brick",
+  "version"    : "0.0.1",
+  "category"   : "api_tools",
+  "language"   : "ruby",
+  "tags"       : "ruby downloader csv sailthru",
+  "description" : "The downloader of files processed by EMR",
+  "created": "26-05-2015",
+  "is_live"    : true,
+   "author"   : {
+     "name" : "Adrian Toman",
+     "email": "adrian.toman@gooddata.com"
+   },
+  "parameters" : [
+    {
+      "name"        : "bds_bucket",
+      "description" : "The BDS Bucket name. The structure on BDS looks like this: bds_bucket/bds_folder/account_id/token",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "bds_folder",
+      "description" : "The BDS folder, where the account-token structure is present. The structure on BDS looks like this: bds_bucket/bds_folder/account_id/token",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "bds_access_key",
+      "description" : "The BDS access key",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "bds_secret_key",
+      "description" : "The BDS secret key",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "account_id",
+      "description" : "The account for current downloader. The structure on BDS looks like this: bds_bucket/bds_folder/account_id/token",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "token",
+      "description" : "The token for current downloader. The structure on BDS looks like this: bds_bucket/bds_folder/account_id/token",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "ID",
+      "description" : "The ID of current downloader instance. ID need to present in configuration.json file",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "GROUP_ID",
+      "description" : "The ID of the group to process",
+      "type"        : "string",
+      "mandatory"   : true
+    }
+  ]
+}
