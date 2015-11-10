@@ -78,6 +78,7 @@ This is what we need to set up.
 
 This is how the file looks like
 
+    login,city
     john@example.com,'San Francisco'
     jane@example.com,'Prague'
     jane@example.com,'San Francisco'
@@ -89,7 +90,7 @@ This is how you have to set up your process
       "domain": "my_domain",
       "filters_config": {
         "user_column": "login",
-        "labels": [{"label": "label.devs.dev_id.email", "column": "email"}]
+        "labels": [{"label": "label.cities.city_id.name", "column": "city"}]
       }
     }
 
