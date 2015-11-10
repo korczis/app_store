@@ -86,7 +86,7 @@ This is how the file looks like
 This is how you have to set up your process
 
     {
-      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/7fdd8453c3c811ccc5a9/raw/155f6fd8414135e16994f30c2d6b16356872001c/gistfile1.txt" }
+      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/777406ede2f7919fc3b6/raw/c053f12c0b57aadcc9271074c91781b7febd4068/column_based_data_example.txt" }
       "domain": "my_domain",
       "filters_config": {
         "user_column": "login",
@@ -114,10 +114,10 @@ This is how the file looks like
 This is how you have to set up your process
 
     {
-      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/e369f17358f12d809607/raw/c2a0a2ee7a87e5318dd510b2aa3f93511f9ab7b4/gistfile1.txt" },
+      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4000a2312892bc914312/raw/616ac343277fb60e816dd7bb0a592895f4872e02/row_based_example_data.txt" },
       "domain": "my_domain",
       "filters_config": {
-        "labels": [{"label": "label.devs.dev_id.email"}]
+        "labels": [{"label": "label.cities.city_id.name"}]
       }
     }
 
@@ -129,10 +129,10 @@ Notes:
 Over to filters are useful in cases where there are so many individual values that need to be set up for each users that it is no longer practical to have them all in the filter. Rule of thumb is when number of values per user hits high hundreds. You can set up a dataset which contains all the values and you can set up the filter to look in that particular dataset for values. The upside of this solution is that it can handle more values and also simplifies the filters. The drawback with this is that you have to put additional datasets in the model which complicate the model.
 
     {
-      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/7fdd8453c3c811ccc5a9/raw/155f6fd8414135e16994f30c2d6b16356872001c/gistfile1.txt" },
+      "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/777406ede2f7919fc3b6/raw/c053f12c0b57aadcc9271074c91781b7febd4068/column_based_data_example.txt" },
       "filters_config": {
         "user_column": "login",
-        "labels": [{"label": "label.devs.dev_id.email", "column": "city", "over": "/gdc/md/obs5uxo2y5atzzx6jx9dpkbwfuttekju/obj/2022", "to": "/gdc/md/obs5uxo2y5atzzx6jx9dpkbwfuttekju/obj/2023"}]
+        "labels": [{"label": "label.cities.city_id.name", "column": "city", "over": "/gdc/md/obs5uxo2y5atzzx6jx9dpkbwfuttekju/obj/2022", "to": "/gdc/md/obs5uxo2y5atzzx6jx9dpkbwfuttekju/obj/2023"}]
       }
     }
 
