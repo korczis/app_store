@@ -6,8 +6,8 @@ fetch_gems = true
 
 repo_gems = [
   'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_base/s3.zip',
-  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_metadata/bds_implementation.zip',
-  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_downloader_csv/master.zip'
+  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_metadata/v0.0.4.zip',
+  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_downloader_csv/v0.0.1.zip'
 ]
 
 if fetch_gems
