@@ -1,38 +1,24 @@
 # encoding: utf-8
 
+# encoding: utf-8
+
 require 'fileutils'
 
-fetch_gems = true
+debug_install = true if !$SCRIPT_PARAMS.nil? and $SCRIPT_PARAMS.include?("DEBUG_INSTALL")
 
-repo_gems = [
-  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_base/s3.zip',
-  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_metadata/v0.0.4.zip',
-  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_downloader_csv/v0.0.1.zip'
-]
+postfix = debug_install ? "2>&1": "1>/dev/null"
 
-if fetch_gems
-  repo_gems.each do |repo_gem|
-    cmd = "curl -LOk --retry 3 #{repo_gem} 2>&1"
-    puts cmd
-    system(cmd)
+package = 'https://gdc-ms-ruby-packages.s3.amazonaws.com/csv_downloader_brick/v0.0.1.zip'
+system("curl -LOk --retry 3 #{package} #{postfix}")
 
-    repo_gem_file = repo_gem.split('/').last
+local_package = package.split('/').last
+system("unzip -o #{local_package} #{postfix}")
 
-    cmd = "unzip -o #{repo_gem_file} 2>&1"
-    puts cmd
-    system(cmd)
-
-    FileUtils.rm repo_gem_file
-  end
-end
-
-#Create output folder
-require 'fileutils'
 FileUtils.mkdir_p('output')
 
 # Bundler hack
 require 'bundler/cli'
-Bundler::CLI.new.invoke(:install, [],:path => "gems",:jobs => 4,:deployment => true)
+Bundler::CLI.new.invoke(:install, [],:path => "gems",:jobs => 4,:deployment => true,:local => true)
 
 # Required gems
 require 'bundler/setup'
