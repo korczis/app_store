@@ -7,17 +7,17 @@ PATH
       gooddata
 
 PATH
-  remote: gooddata_connectors_downloader_salesforce-gse
+  remote: gooddata_connectors_downloader_salesforce-0.0.2
   specs:
-    gooddata_connectors_downloader_salesforce (0.0.1)
+    gooddata_connectors_downloader_salesforce (0.0.2)
       gooddata
       restforce
       salesforce_bulk_query
 
 PATH
-  remote: gooddata_connectors_metadata-0.0.4
+  remote: gooddata_connectors_metadata-0.0.5
   specs:
-    gooddata_connectors_metadata (0.0.4)
+    gooddata_connectors_metadata (0.0.5)
       aws-sdk
       gooddata (~> 0.6, >= 0.6.12)
       hashie (~> 3.3, >= 3.3.2)
