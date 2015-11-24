@@ -37,7 +37,7 @@ This was fine but as we added another type of deployment type it allowed us to d
 
 Unfortunately the platform did not evolve so we decided to come up with something that would allow us to use these nested parameters on the current platform. We encode the portion of the params into special key. The previous example looks like this
 
-    { "gd_encoded_params" => "{\"filters\":[\"filter_1\",\"filter_2\"]}" }
+    { "gd_encoded_params" : "{\"filters\":[\"filter_1\",\"filter_2\"]}" }
 
 This means several things.
 
