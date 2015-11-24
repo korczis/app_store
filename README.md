@@ -21,23 +21,23 @@ You can find bricks in the [apps](https://github.com/gooddata/app_store/tree/mas
 
 Historically there was only one type of job you could deploy and that was Cloud Connect graph. CC graph supported parameters but it constrained them to key value pairs where both of those were strings. Imagine something like this.
 
-  {
-    "login" : "password",
-    "name" : "Tomas"
-  }
+    {
+      "login" : "password",
+      "name" : "Tomas"
+    }
 
 This was fine but as we added another type of deployment type it allowed us to deal with different tasks and we saw need to work with more structured parameters arised. Imagine something like this and now think how you would express it if you could only use strings as values.
 
-  {
-    "filters" : [
-      "filter_1",
-      "filter_2"
-    ]
-  }
+    {
+      "filters" : [
+        "filter_1",
+        "filter_2"
+      ]
+    }
 
 Unfortunately the platform did not evolve so we decided to come up with something that would allow us to use these nested parameters on the current platform. We encode the portion of the params into special key. The previous example looks like this
 
-  { "gd_encoded_params" => "{\"filters\":[\"filter_1\",\"filter_2\"]}" }
+    { "gd_encoded_params" => "{\"filters\":[\"filter_1\",\"filter_2\"]}" }
 
 This means several things.
 
