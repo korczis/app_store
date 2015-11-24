@@ -16,9 +16,41 @@ While all our bricks are currently written in Ruby this is not mandatory. Brick 
 You can find bricks in the [apps](https://github.com/gooddata/app_store/tree/master/apps) directory. Each folder there represent one brick. You can deploy by cloning the app store and using a web interface in "Administration console" or you can use Automation SDK. You can both [deploy](https://github.com/gooddata/gooddata-ruby-examples/blob/master/07_deployment_recipes/01_process_deployment.asciidoc) and [redeploy](https://github.com/gooddata/gooddata-ruby-examples/blob/master/07_deployment_recipes/02_process_redeployment.asciidoc) with it.
 
 ### Scheduling/Executing
-While deployment is tool agnostic. Scheduling has to be performed using Automation SDK at this point. The reason for this is that gooddata platform currently does not support nested (JSON like) parameters which are necessary for concisely parametrize majority of the bricks. Automation SDK takes care of the details for you. The caveat is that in the Administration console you will see the data encoded (though still readable) the advantage is that configuration is much more readable.
 
-You can read about various ways how to schedule processes in our [cookbook](https://github.com/gooddata/gooddata-ruby-examples/tree/master/07_deployment_recipes)
+### Working with nested parameters during deployment
+
+Historically there was only one type of job you could deploy and that was Cloud Connect graph. CC graph supported parameters but it constrained them to key value pairs where both of those were strings. Imagine something like this.
+
+  {
+    "login" : "password",
+    "name" : "Tomas"
+  }
+
+This was fine but as we added another type of deployment type it allowed us to deal with different tasks and we saw need to work with more structured parameters arised. Imagine something like this and now think how you would express it if you could only use strings as values.
+
+  {
+    "filters" : [
+      "filter_1",
+      "filter_2"
+    ]
+  }
+
+Unfortunately the platform did not evolve so we decided to come up with something that would allow us to use these nested parameters on the current platform. We encode the portion of the params into special key. The previous example looks like this
+
+  { "gd_encoded_params" => "{\"filters\":[\"filter_1\",\"filter_2\"]}" }
+
+This means several things.
+
+1) If you use either Ruby SDK or Goodot for scheduling or execution you do not have to do anything. All the magic happens behid the covers and you can just deploy parameters as you normally would (You can read about various ways how to schedule processes in our [cookbook](https://github.com/gooddata/gooddata-ruby-examples/tree/master/07_deployment_recipes)
+). If you inspect the Administration console you will see the parameters in their raw form there but you do not need to pay special attention to that.
+
+2) On the side of the script that is deployed the script needs to decode the parameters. If you use bricks from app store you again do not have ot do anything. If you decide to roll your own sript you have to decode the parameters from the API in the actual deployed script.
+
+3) If you want to schedule things by hand you need to make sure that you are providing parameters that the script can understand. Specifically you have to do this.
+
+- take the JSON you have and paste it UI into parameters named "gd_encoded_params" for regular parameters or "gd_encoded_hidden_params" if you would like to keep parameters hidden.
+
+In previous example the result would look like this. Into paremeter name `gd_encoded_params` you would paste `{ "filters" : [ "filter_1", "filter_2" ] }`
 
 ### Input data sources
 +As stated before we are trying to minimize the amount of glue code that is necessary to make things work. Since generally you do not know where your data would come from we want to give you power to consume wider number of sources (web, ADS, staging (aka WebDAV), S3) so you do not have to change any code just configuration. What is considered a source is specific for each brick bug generally you can recognize it by the name of the parameter in the documentation of specific brick. The name of the parameter will be "*_input_source" or just "input_source". If it is named according to this convention then you can treat is as a datasource. Below are couple of general example how things are configured. Again, the configuration is specific for each brick so please refer to their documentation specifically for further information.
@@ -93,4 +125,3 @@ The file is consumed as is. Majority of the bricks are expecting CSV that is par
 ### Output data sources
 
 It would make sense to do something similar for the outputs and that is planned. Currently this is not implemented.
-
