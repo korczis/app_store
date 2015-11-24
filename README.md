@@ -26,7 +26,7 @@ Historically there was only one type of job you could deploy and that was Cloud 
       "name" : "Tomas"
     }
 
-This was fine but as we added another type of deployment type it allowed us to deal with different tasks and we saw need to work with more structured parameters arised. Imagine something like this and now think how you would express it if you could only use strings as values.
+This was fine but as we added another type of deployment type it allowed us to deal with different tasks and we saw need to work with more structured parameters. Imagine something like this and  think how you would express it if you could only use strings as values.
 
     {
       "filters" : [
@@ -35,14 +35,14 @@ This was fine but as we added another type of deployment type it allowed us to d
       ]
     }
 
-Unfortunately the platform did not evolve so we decided to come up with something that would allow us to use these nested parameters on the current platform. We encode the portion of the params into special key. The previous example looks like this
+Unfortunately the platform did not evolve with this reqiurement so we decided to come up with something that would allow us to use these nested parameters on the current platform. We encode the portion of the params that contain nested keys into special key. The previous example looks like this
 
     { "gd_encoded_params" : "{\"filters\":[\"filter_1\",\"filter_2\"]}" }
 
 This means several things.
 
 1) If you use either Ruby SDK or Goodot for scheduling or execution you do not have to do anything. All the magic happens behid the covers and you can just deploy parameters as you normally would (You can read about various ways how to schedule processes in our [cookbook](https://github.com/gooddata/gooddata-ruby-examples/tree/master/07_deployment_recipes)
-). If you inspect the Administration console you will see the parameters in their raw form there but you do not need to pay special attention to that.
+). If you inspect the Administration console you will see the parameters in their raw form there but you do not need to pay special attention to that (SDK tries to create the parameters in a smarter way and encodes the parameters that are really nested so the result is as much readable on the UI as possible).
 
 2) On the side of the script that is deployed the script needs to decode the parameters. If you use bricks from app store you again do not have ot do anything. If you decide to roll your own sript you have to decode the parameters from the API in the actual deployed script.
 
