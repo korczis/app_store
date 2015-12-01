@@ -144,6 +144,17 @@ And here you have corresponding process params
       "authentication_modes_column": "my_authentication_modes_column"
     }
 
+### User group
+
+User can be assigned to a group. The group has to exist before the assignement is made. If any group does not exist synchronization to project is not started. Similarly to 'modes of authentication' you can assign user to several groups by specificing the groups separated by comma in one CSV field. The data with default column names might look like this.
+
+  login                 | first_name  | last_name      | user_group                      |
+------------------------|-------------|----------------|---------------------------------|
+ jane.doe@example.com   | Jane        | Doe            | group_1                         |
+ john.doe@example.com   | John        | Doe            | "group_1, group_2"              |
+
+The column in which user_group is specified can be overriden by parameter user_group_column.
+
 ## Modes of synchronization
 
 The brick can operate in different modes. We implemented several modes that we find useful in our day to day usage. If something that would be useful for you is not here let us know the list is not meant to be definitive.
@@ -253,6 +264,7 @@ The following list contains the properties that are useful to specify for updati
 * SSO Provider - sso_provider (sso_provider_column)
 * Project ID - project_id (multiple_projects_column)
 * Authentication modes - authentication_modes (authentication_modes_column)
+* User group - user_group (user_group_column)
 
 For instance, if in your data first names would be stored in a column called "x", you would pass as param something along the lines of
 

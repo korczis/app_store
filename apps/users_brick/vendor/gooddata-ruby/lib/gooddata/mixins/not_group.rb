@@ -4,14 +4,14 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-require_relative 'data_getter'
-require_relative 'meta_getter'
-
 module GoodData
   module Mixin
-    module RestGetters
-      include Mixin::MetaGetter
-      include Mixin::DataGetter
+    module NotUserGroup
+      # Returns true if the object is a fact false otherwise
+      # @return [Boolean]
+      def user_group?
+        false
+      end
     end
   end
 end

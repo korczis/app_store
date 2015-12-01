@@ -46,6 +46,7 @@ module GoodData
         role_column                 = params['role_column'] || 'role'
         sso_provider_column         = params['sso_provider_column'] || 'sso_provider'
         authentication_modes_column = params['authentication_modes_column'] || 'authentication_modes'
+        user_groups_column          = params['user_group_column'] || 'user_group'
 
         sso_provider = params['sso_provider']
         authentication_modes = params['authentication_modes'] || []
@@ -67,6 +68,7 @@ module GoodData
             :role => row[role_column],
             :sso_provider => sso_provider || row[sso_provider_column],
             :authentication_modes => modes,
+            :user_group => row[user_groups_column] && row[user_groups_column].split(',').map(&:strip),
             :pid => multiple_projects_column.nil? ? nil : row[multiple_projects_column]
           }.compact
         end

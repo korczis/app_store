@@ -4,17 +4,33 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-module GoodData
-  class DashboardItem
-    include GoodData::Mixin::RootKeyGetter
-    include GoodData::Mixin::DataGetter
+require_relative '../../../rest/resource'
 
+module GoodData
+  class DashboardItem < Rest::Resource
     attr_reader :tab
     attr_accessor :json
+
+    ASSIGNABLE_MEMBERS = [
+      :pos_x,
+      :pos_y,
+      :position_x,
+      :position_y,
+      :size_x,
+      :size_y
+    ]
 
     def initialize(tab, json)
       @tab = tab
       @json = json
+    end
+
+    def filters
+      data['filters']
+    end
+
+    def filters=(new_filters)
+      data['filters'] = new_filters
     end
 
     def position_x

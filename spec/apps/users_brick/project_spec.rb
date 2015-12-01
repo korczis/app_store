@@ -310,4 +310,34 @@ describe GoodData::Bricks::UsersBrick do
       tempfile.unlink
     end
   end
+
+  it 'should be able to add users to groups as well' do
+    used_user = @domain.users.to_a.sample(2)
+    begin
+      tempfile = Tempfile.new('domain_sync')
+      CSV.open(tempfile.path, 'w') do |csv|
+        csv << [:login, :role, :user_group]
+        csv << [used_user[0].login, :admin, 'group_1, group_2']
+        csv << [used_user[1].login, :editor, 'group_1']
+      end
+
+      @project_1.upload_file(tempfile.path)
+      g1 = @project_1.add_user_group(name: 'group_1')
+      g2 = @project_1.add_user_group(name: 'group_2')
+      user_process = @project_1.deploy_process(Pathname.new(APP_STORE_ROOT) + 'apps/users_brick', name: 'users_brick_example', type: :ruby)
+      user_process.execute('main.rb', params: {
+        'domain'        => @domain.name,
+        'input_source'  => Pathname(tempfile.path).basename.to_s,
+        'sync_mode'     => 'sync_domain_and_project'
+      })
+    ensure
+      tempfile.unlink
+    end
+    expect(@domain.member?(used_user[0])).to be_truthy
+    expect(@project_1.member?(used_user[0])).to be_truthy
+    expect(@domain.member?(used_user[1])).to be_truthy
+    expect(@project_1.member?(used_user[1])).to be_truthy
+    expect(g1.members.map(&:login)).to match_array([used_user[0].login, used_user[1].login])
+    expect(g2.members.map(&:login)).to match_array([used_user[0].login])
+  end
 end

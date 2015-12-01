@@ -19,13 +19,14 @@ require_relative '../rest/resource'
 require_relative '../mixins/author'
 require_relative '../mixins/contributor'
 require_relative '../mixins/rest_resource'
+require_relative '../mixins/uri_getter'
 
 require_relative 'process'
 require_relative 'project_role'
 require_relative 'blueprint/blueprint'
 
 module GoodData
-  class Project < GoodData::Rest::Resource
+  class Project < Rest::Resource
     USERSPROJECTS_PATH = '/gdc/account/profile/%s/projects'
     PROJECTS_PATH = '/gdc/projects'
     PROJECT_PATH = '/gdc/projects/%s'
@@ -48,15 +49,9 @@ module GoodData
 
     attr_accessor :connection, :json
 
-    alias_method :to_json, :json
-    alias_method :raw_data, :json
-
-    include GoodData::Mixin::RestResource
-
-    Project.root_key :project
-
-    include GoodData::Mixin::Author
-    include GoodData::Mixin::Contributor
+    include Mixin::Author
+    include Mixin::Contributor
+    include Mixin::UriGetter
 
     class << self
       # Returns an array of all projects accessible by
@@ -181,6 +176,18 @@ module GoodData
 
     alias_method :create_dashboard, :add_dashboard
 
+    def add_user_group(data)
+      g = GoodData::UserGroup.create(data.merge(project: self))
+
+      begin
+        g.save
+      rescue RestClient::Conflict
+        user_groups(data[:name])
+      end
+    end
+
+    alias_method :create_group, :add_user_group
+
     # Creates a metric in a project
     #
     # @param [options] Optional report options
@@ -293,7 +300,7 @@ module GoodData
       begin
         # Create the project first so we know that it is passing.
         # What most likely is wrong is the token and the export actaully takes majority of the time
-        new_project = GoodData::Project.create(options.merge(:title => a_title, :client => client))
+        new_project = GoodData::Project.create(options.merge(:title => a_title, :client => client, :driver => content[:driver]))
         export_token = export_clone(options)
         new_project.import_clone(export_token)
       rescue
@@ -342,6 +349,10 @@ module GoodData
         body['taskState']['status'] == 'RUNNING'
       end
       result['exportArtifact']['token']
+    end
+
+    def user_groups(id = :all, options = {})
+      GoodData::UserGroup[id, options.merge(project: self)]
     end
 
     # Imports a clone into current project. The project has to be freshly
@@ -1087,7 +1098,7 @@ module GoodData
 
     alias_method :members, :users
 
-    def whitelist_users(new_users, users_list, whitelist)
+    def whitelist_users(new_users, users_list, whitelist, mode = :exclude)
       return [new_users, users_list] unless whitelist
 
       new_whitelist_proc = proc do |user|
@@ -1098,7 +1109,11 @@ module GoodData
         whitelist.any? { |wl| wl.is_a?(Regexp) ? user.login =~ wl : user.login.include?(wl) }
       end
 
-      [new_users.reject(&new_whitelist_proc), users_list.reject(&whitelist_proc)]
+      if mode == :include
+        [new_users.select(&new_whitelist_proc), users_list.select(&whitelist_proc)]
+      elsif mode == :exclude
+        [new_users.reject(&new_whitelist_proc), users_list.reject(&whitelist_proc)]
+      end
     end
 
     # Imports users
@@ -1110,6 +1125,9 @@ module GoodData
       GoodData.logger.warn("Importing users to project (#{pid})")
 
       whitelisted_new_users, whitelisted_users = whitelist_users(new_users.map(&:to_hash), users_list, options[:whitelists])
+
+      # First check that if groups are provided we have them set up
+      check_groups(new_users.map(&:to_hash).flat_map { |u| u[:user_group] || [] }.uniq)
 
       # conform the role on list of new users so we can diff them with the users coming from the project
       diffable_new_with_default_role = whitelisted_new_users.map do |u|
@@ -1156,6 +1174,30 @@ module GoodData
       to_remove = diff[:removed].reject { |user| user[:status] == 'DISABLED' || user[:status] == :disabled }
       GoodData.logger.warn("Removing #{to_remove.count} users from project (#{pid})")
       results.concat(disable_users(to_remove))
+
+      # reassign to groups
+      mappings = new_users.map(&:to_hash).flat_map do |user|
+        groups = user[:user_group] || []
+        groups.map { |g| [user[:login], g] }
+      end
+      unless mappings.empty?
+        users_lookup = users.reduce({}) do |a, e|
+          a[e.login] = e
+          a
+        end
+        mappings.group_by { |_, g| g }.each do |g, mapping|
+          # find group + set users
+          # CARE YOU DO NOT KNOW URI
+          user_groups(g).set_members(mapping.map { |user, _| user }.map { |login| users_lookup[login] && users_lookup[login].uri })
+        end
+        mentioned_groups = mappings.map(&:last).uniq
+        groups_to_cleanup = user_groups.reject { |g| mentioned_groups.include?(g.name) }
+        # clean all groups not mentioned with exception of whitelisted users
+        groups_to_cleanup.each do |g|
+          g.set_members(whitelist_users(g.members.map(&:to_hash), [], options[:whitelists], :include).first.map { |x| x[:uri] })
+        end
+      end
+      results
     end
 
     def disable_users(list)
@@ -1169,6 +1211,12 @@ module GoodData
         result = client.post(url, 'users' => payload)
         result['projectUsersUpdateResult'].mapcat { |k, v| v.map { |x| { type: k.to_sym, uri: x } } }
       end
+    end
+
+    def check_groups(specified_groups)
+      groups = user_groups.map(&:name)
+      missing_groups = specified_groups - groups
+      fail "All groups have to be specified before you try to import users. Groups that are currently in project are #{groups.join(',')} and you asked for #{missing_groups.join(',')}" unless missing_groups.empty?
     end
 
     # Update user
@@ -1185,7 +1233,6 @@ module GoodData
       fail ArgumentError, "User #{user_uri} could not be aded. #{failure.first['message']}" unless failure.blank?
       res
     end
-
     alias_method :add_user, :set_user_roles
 
     # Update list of users
@@ -1214,13 +1261,12 @@ module GoodData
 
       payloads = users_to_add.map { |u| generate_user_payload(u[:user], 'ENABLED', u[:roles]) }
       results = payloads.each_slice(100).map do |payload|
-        client.post("#{uri}/users?successDetails=true", 'users' => payload)
+        client.post("#{uri}/users", 'users' => payload)
       end
-      # transform the results into a list of typed results
-      failed_results = results.flat_map { |res| res['projectUsersUpdateResult']['failed'].map { |x| { type: :failed, user: x } } }
-      succes_results = results.flat_map { |res| res['projectUsersUpdateResult']['successDetails'].map { |x| { type: :success, user: x['profile'], login: x['user'] } } }
+      # this ugly line turns the hash of errors into list of errors with types so we can process them easily
+      typed_results = results.flat_map { |x| x['projectUsersUpdateResult'].flat_map { |k, v| v.map { |v_2| v_2.is_a?(String) ? { type: k.to_sym, user: v_2 } : GoodData::Helpers.symbolize_keys(v_2).merge(type: k.to_sym) } } }
       # we have to concat errors from role resolution and API result
-      failed_results + succes_results + (users_by_type[:failed] || [])
+      typed_results + (users_by_type[:failed] || [])
     end
 
     alias_method :add_users, :set_users_roles
