@@ -58,7 +58,7 @@ module GoodData::Bricks
       work_done_identificator = params["WORK_DONE_IDENTIFICATOR"]
       number_of_schedules_in_batch = Integer(params["NUMBER_OF_SCHEDULES_IN_BATCH"] || "1000")
       delay_between_batches = Integer(params["DELAY_BETWEEN_BATCHES"] || "0")
-
+      control_parameter = params["CONTROL_PARAMETER"] || "MODE"
 
       # The WORK_DONE_IDENTIFICATOR is flag which tells the executor to execute the schedules
       # It could have special value IGNORE. In this case all corresponding schedules will be started during every run of this brick
@@ -75,8 +75,8 @@ module GoodData::Bricks
         GoodData::Project.all.each do |project|
           begin
             project.schedules.each do |s|
-              if (s.params.include?("MODE"))
-                if (list_of_modes.include?(s.params["MODE"]))
+              if (s.params.include?(control_parameter))
+                if (list_of_modes.include?(s.params[control_parameter]))
                   schedules_to_start << {:schedule => s,:project => project}
                 end
               end
