@@ -9,7 +9,7 @@ module GoodData::Bricks
 
     def call(params)
       client = params['GDC_GD_CLIENT'] || fail('client needs to be passed into a brick as "GDC_GD_CLIENT"')
-      domain_name = params['domain']
+      domain_name = params['organization'] || params['domain']
       domain = client.domain(domain_name) if domain_name
       project = client.projects(params['gdc_project']) || client.projects(params['GDC_PROJECT_ID'])
 
