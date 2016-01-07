@@ -69,9 +69,6 @@ What it mean is that it will change the types from source DB types to generic ty
 
 After the metadata are successfully parsed, the SQL downloader will start downloading the data. Right now it is downloading always full data from the source table. The data are dumped in to the CSV files, the CSV file is GZIPed and uploaded on BDS.
 
-
-
-
 ## Configuration
 
 This section is containing information about the SQL downloader section of the configuration.json file.
@@ -82,7 +79,7 @@ The structure of the configuration file for S3 data source looks like this:
  * **database** - the database, where the tables are located
  * **username** - username for the database
  * **password** - password for the database
-
+ * **default_start_date** (optional) (2010-01-01) - used for incremental download. This date will be set as starting data durring the first run of the downloader in the incremental mode
 
 ### Example
 
@@ -109,6 +106,26 @@ The structure of the configuration file for S3 data source looks like this:
                 }
             }
         }
+
+
+## Entity configuration
+
+There are some special configurations possible for the SQL downloader on entity level. The example entity configuration can look like this: 
+
+
+ * **timestamp** - this value contains name of the field which should be used for incremental download from database. The field must be date.
+
+### Example
+ 
+    "Account": {
+      "global": {
+        "custom": {
+          "hub": ["Id"],
+          "timestamp": "updated_at",
+        }
+      }
+    }
+
 
 
 More info in example_configuraion.json file in the SQL Downloader folder.
