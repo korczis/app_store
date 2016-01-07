@@ -6,6 +6,7 @@ This brick can be used for downloading CSV files from various sources (at the mo
 
 This part of documentation is covering only the CSV downloader. The overall information about the connectors structure can be found in connectors metadata gem documentation [link](https://github.com/gooddata/gooddata_connectors_metadata/tree/bds_implementation).
 
+The current version of downloader support data download froM S3 and from SFTP.
 
 ## Deployment
 
@@ -133,6 +134,8 @@ manifest-{batch_identification}_{sequence}.{time}
 
 The name of the manifest can look like this: **manifest-batchB_1.20150217104924.csv**
 
+The sequence number is stored with the downloaded data file and can be used to fill the computed field in the integrator settings.
+
 The structure of the file should look like this:
 
  * **file_url** - full path to desired file uploaded on storage
@@ -141,8 +144,11 @@ The structure of the file should look like this:
  * **feed** - name of entity, to which the file is connected
  * **feed_version** - the version in FEED file to which the uploaded file is connected ( **only one version of entity can be present in manifest file** - you cannot have Account v1.0 and Account v2.0 in one manifest)
  * **num_rows** **(optional)** - number of rows in uploaded file
- * **md5** - MD5 checksum of uploaded file
+ * **md5** - MD5 checksum of uploaded file. You can put "uknown" value to this columns and then the MD5 check will be ignored. 
  * **export_type** **(optional)** - possible values (inc/full). Default is inc. It marks if the file in manifest is full or increment. It changes how the file is integrated to database. 
+
+
+You can add any additional fields to the manifest. Value of the field will be stored and connected to downloaded file and then can be further used to fill the computed fields in the integrator settings.
 
 #### Example:
 
@@ -160,18 +166,16 @@ The data files will contain data, which the user want to download. The downloade
 
 This section is containing information about the CSV downloader section of the configuration.json file. It is important to know, that CSV downloader is processing data in batches. One manifest file, mean one batch. If you want to set up the ADS integrator processing data downloader by CSV connector, you need to switch it to the batch mode. The name  of the batch is ID of the connector.
 
-The structure of the configuration file for S3 data source looks like this:
+The switching between S3 and SFTP is done by type parameter (s3,sftp)
 
- * **bucket** - name of the S3 bucket
+The structure of the configuration file:
+ 
  * **folder** - name of the folder on the data source. In this folder the manifests files need to be present. It is possible to have more tree like structure. The tool will be looking for manifest in whole path after this path.
  * **data_structure_info** - the full path to the FEED file
- * **access_key** - access key to S3 bucket
- * **secret_key** - secret key to S3 bucket (this parameter should be not saved in configuration.json file but provided to execution by Secure Parameter. How to do it can be found in metadata gem documentation)
  * **manifest** - definition of the manifest file ( more info below )
  * **manifest_process_type** (move/history) - if set to move, the manifest file will be moved to processed folder. If set to history, the manifest will stay.
  * **number_of_manifest_in_one_run** - maximum number of manifests which is processed in one run. Default value is 5
  * **delete_data_after_processing** (true/false) - if set to TRUE, the data will be delete from the source, after processing. Default FALSE.
- * **use_link_file** (true/false) - if set to TRUE, the link file functionality will be enabled. More info about this functionality is at the end of this document.
  * **ignore_check_sum** (true/false) - this options set to true will ignore the MD5 checksum when downloading the file 
  * **file_structure** - this section of the configuration is dedicated to structure of the file. This hints are need for CSV parsing when loading it to ADS. More information about each of the option can be found in Vertica documentation [link](http://my.vertica.com/docs/6.1.x/HTML/index.htm#1668.htm).
     * **skip_rows** (optional) - number of skipped columns in CSV (used mainly to remove header from CSV file)
@@ -180,6 +184,31 @@ The structure of the configuration file for S3 data source looks like this:
     * **file_format** (optional) - specify format of the file. Empty is pure CSV. In case of GZIP file use GZIP option.
     * **db_parser** (optional) - specify the type of parser used by ADS. Empty is default parser. In case you want to use GDC Parser use gdc option.
     * **enclosed_by** (optional) - specifies the enclosing character
+    * **null_value** (optional) - specifies the null value character
+    
+    
+The S3 specific configuration:
+ 
+ * **bucket** - name of the S3 bucket
+ * **access_key** - access key to S3 bucket
+ * **secret_key** - secret key to S3 bucket (this parameter should be not saved in configuration.json file but provided to execution by Secure Parameter. How to do it can be found in metadata gem documentation)
+ * **use_link_file** (true/false) - if set to TRUE, the link file functionality will be enabled. More info about this functionality is at the end of this document.
+
+
+The SFTP specific configuration:
+
+ * **username** - username used to connect to SFTP
+ * **auth_mode** - (password/cert) - which mode is used to authenticate to server
+ * **host** - host name of the SFTP server
+ * **port** - (22) port on which the SFTP is running
+ * **password** - (auth_mode -> password) used for authentication to SFTP server
+ * **cert_path** - (auth_mode -> cert) path to the certificate, which should be used to connect to SFTP server (the certificate need to be deployed in the CSV downloader package)
+ * **cert_passphrase** - (auth_mode -> cert) passphrase used to decrypt the certificate
+
+The SFTP has some of the parameters set to constant value (the value cannot be changed)
+
+ * ignore_check_sum -> true
+ * number_of_threads -> 1
 
 ### Manifest option
 
