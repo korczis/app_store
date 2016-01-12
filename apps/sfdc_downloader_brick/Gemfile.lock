@@ -15,9 +15,9 @@ PATH
       salesforce_bulk_query
 
 PATH
-  remote: gooddata_connectors_metadata-0.0.5
+  remote: gooddata_connectors_metadata-0.0.6
   specs:
-    gooddata_connectors_metadata (0.0.5)
+    gooddata_connectors_metadata (0.0.6)
       aws-sdk
       gooddata (~> 0.6, >= 0.6.12)
       hashie (~> 3.3, >= 3.3.2)
