@@ -129,7 +129,7 @@ module GoodData::Bricks
                  "#{params[protocol_name]}://#{params[server_name]}"
                end
 
-      client = if params['GDC_USERNAME'].nil? || params['GDC_PASSWORD'].nil?
+      client = if params['GDC_USERNAME'].nil? && params['GDC_PASSWORD'].nil?
                  puts "Connecting with SST to server #{server}"
                  fail 'SST (SuperSecureToken) not present in params' if params[token_name].nil?
                  GoodData.connect(sst_token: params[token_name], server: server)
