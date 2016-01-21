@@ -1,0 +1,9 @@
+source 'https://rubygems.org'
+
+
+gem 'ffi','1.9.3'
+gem 'terminal-table','1.4.5'
+gem 'gooddata'
+gem "gooddata_connectors_base", :path => 'gooddata_connectors_base-s3'
+gem "gooddata_connectors_metadata", :path => "gooddata_connectors_metadata-0.0.6"
+gem "gooddata_connectors_downloader_csv", :path => "gooddata_connectors_downloader_csv-development"
