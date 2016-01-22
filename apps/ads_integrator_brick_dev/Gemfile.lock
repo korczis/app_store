@@ -1,7 +1,7 @@
 PATH
   remote: gooddata_connectors_ads-by_reference_architecture
   specs:
-    gooddata_connectors_ads (0.0.5)
+    gooddata_connectors_ads (0.0.8)
       erubis
       gooddata-dss-jdbc
       hashie
@@ -19,7 +19,7 @@ PATH
 PATH
   remote: gooddata_connectors_metadata-bds_implementation_devel
   specs:
-    gooddata_connectors_metadata (0.0.4)
+    gooddata_connectors_metadata (0.0.6)
       aws-sdk
       gooddata (~> 0.6, >= 0.6.12)
       hashie (~> 3.3, >= 3.3.2)
@@ -27,7 +27,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (4.2.4)
+    activesupport (4.2.5)
       i18n (~> 0.7)
       json (~> 1.7, >= 1.7.7)
       minitest (~> 5.1)
@@ -48,7 +48,7 @@ GEM
     faraday_middleware (0.10.0)
       faraday (>= 0.7.4, < 0.10)
     ffi (1.9.3-java)
-    gli (2.13.2)
+    gli (2.13.4)
     gooddata (0.6.18)
       activesupport (~> 4.1, >= 4.1.0)
       aws-sdk (~> 1.45)
@@ -68,8 +68,8 @@ GEM
       rubyzip (~> 1.1, >= 1.1.0)
       salesforce_bulk_query (~> 0.0)
       terminal-table (~> 1.4, >= 1.4.5)
-    gooddata-dss-jdbc (0.1.7)
-    hashie (3.4.2)
+    gooddata-dss-jdbc (0.1.8)
+    hashie (3.4.3)
     highline (1.7.8)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
@@ -77,15 +77,15 @@ GEM
     json (1.8.3-java)
     json_pure (1.8.3)
     method_source (0.8.2)
-    mime-types (2.6.2)
-    minitest (5.8.1)
+    mime-types (2.99)
+    minitest (5.8.3)
     multi_json (1.11.2)
     multipart-post (2.0.0)
-    netrc (0.10.3)
-    nokogiri (1.6.6.2-java)
+    netrc (0.11.0)
+    nokogiri (1.6.7-java)
     parseconfig (1.0.6)
     peach (0.5.1)
-    pmap (1.0.2)
+    pmap (1.1.1)
     pry (0.9.12.6-java)
       coderay (~> 1.0)
       method_source (~> 0.8)
@@ -104,7 +104,7 @@ GEM
     salesforce_bulk_query (0.2.0)
       json (~> 1.8)
       xml-simple (~> 1.1)
-    sequel (4.27.0)
+    sequel (4.29.0)
     slop (3.6.0)
     spoon (0.0.4)
       ffi
