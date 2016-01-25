@@ -174,7 +174,7 @@ The structure of the configuration file:
  * **data_structure_info** - the full path to the FEED file
  * **manifest** - definition of the manifest file ( more info below )
  * **manifest_process_type** (move/history) - if set to move, the manifest file will be moved to processed folder. If set to history, the manifest will stay.
- * **number_of_manifest_in_one_run** - maximum number of manifests which is processed in one run. Default value is 5
+ * **number_of_manifest_in_one_run** - maximum number of manifests which is processed in one run. Default value is 1
  * **delete_data_after_processing** (true/false) - if set to TRUE, the data will be delete from the source, after processing. Default FALSE.
  * **ignore_check_sum** (true/false) - this options set to true will ignore the MD5 checksum when downloading the file 
  * **file_structure** - this section of the configuration is dedicated to structure of the file. This hints are need for CSV parsing when loading it to ADS. More information about each of the option can be found in Vertica documentation [link](http://my.vertica.com/docs/6.1.x/HTML/index.htm#1668.htm).
