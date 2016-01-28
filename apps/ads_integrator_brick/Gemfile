@@ -6,4 +6,4 @@ gem 'gooddata'
 gem "gooddata-dss-jdbc",:platform => "jruby"
 gem "gooddata_connectors_base", :path => 'gooddata_connectors_base-s3'
 gem "gooddata_connectors_metadata",'0.0.4', :path => "gooddata_connectors_metadata-0.0.4"
-gem "gooddata_connectors_ads", :path => "gooddata_connectors_ads-0.0.9"
+gem "gooddata_connectors_ads", :path => "gooddata_connectors_ads-0.0.10"

@@ -1,7 +1,7 @@
 PATH
-  remote: gooddata_connectors_ads-0.0.9
+  remote: gooddata_connectors_ads-0.0.10
   specs:
-    gooddata_connectors_ads (0.0.9)
+    gooddata_connectors_ads (0.0.10)
       erubis
       gooddata-dss-jdbc
       hashie
@@ -27,7 +27,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (4.2.5)
+    activesupport (4.2.5.1)
       i18n (~> 0.7)
       json (~> 1.7, >= 1.7.7)
       minitest (~> 5.1)
@@ -78,12 +78,12 @@ GEM
     json_pure (1.8.3)
     method_source (0.8.2)
     mime-types (2.99)
-    minitest (5.8.3)
+    minitest (5.8.4)
     multi_json (1.11.2)
     multipart-post (2.0.0)
     netrc (0.11.0)
-    nokogiri (1.6.7.1-java)
-    parseconfig (1.0.6)
+    nokogiri (1.6.7.2-java)
+    parseconfig (1.0.8)
     peach (0.5.1)
     pmap (1.1.1)
     pry (0.9.12.6-java)

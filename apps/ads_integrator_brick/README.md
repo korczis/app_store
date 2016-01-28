@@ -185,6 +185,10 @@ This options are applied right after the configuration change
         * **access_key** - specify the access key for the linked file source.
         * **secret_key** - specify the secret key for the linked file source.
         * **bucket** - specify the bucket for the linked file source.
+    * **computed_fields** (optional) - you can specify additional metadata fields, which will be attached to each entity - more info in computed fields section
+
+
+
 
        
      
@@ -212,24 +216,50 @@ There is possibility to provide some configuration for ASD integration tool on t
  * **hub** - the list of fields, which are creating primary key for the current entity. This is mandatory setting for ASD integrator to work. 
  * **fields_to_clean** - (optional) (default -> []) You can name fields here which will be cleaned inside of the copy command. For example if there is DECIMAL(30,15) in data and you have DECIMAL(30,10) in DB, the default copy command will fail. With clean on this field enabled, the DECIMAL in data will be trucanted to fit to DECIMAL in database. (Currently it works only on DECIMAL types) 
  * **source_projection** (optional) - works only when the finish_in_source parameter is used. This enabled you to create your default projection when creating source tables. If this option is not used, the ASD Integrator is creating projection optimized for data integration.  
-    **order_by** - 
+    **order_by**  
     **segmented_by** 
-					"hub": [
-						"client_id",
-						"blast_msg_id",
-						"label_id"
-					],
-					"source_projection": {
-						"order_by": [
-							"client_id",
-							"blast_msg_id"
-						]
-					},
+	
+###Example
+				
+    "hub": [
+		"client_id",
+		"blast_msg_id",
+		"label_id"
+	],
+	"source_projection": {
+		"order_by": [
+			"client_id",
+			"blast_msg_id"
+			],
+	    "segmented_by":[
+		    "client_id"
+		]
+	},
 
+## Computed fields
 
+The computed fields settings have this options:
+ 
+ * **name** - name of the computed field
+ * **type** - type of of the metadata field
+ * **table_type** (src,stg) - which type of tables should have this specific settings
+ * **function** - function defining how the value will be populated
+ 
+Possible functions:
 
+ * **now** - (possible in src and stg) - the field will be populated with database now() function    
+ * **runtime_metadata** - (possible in src) - the field will be populated from file runtime metadata. In this metadata are for example store aditional metadata from manifest or sequence number. If you want to full the value with field custom_date from manifest, you will write the function runtime_metadata|custom_date
+ * **value** - (possible in stg) - the field will be populated from value of source table. For example if you want to populate the field with _sys_custom from src table you will use function like this value|_sys_custom
 
+### Example
 
+    "computed_fields":[
+        {
+        "name" : "sys_sequence",
+        "type" : "string-255",
+        "table_type" : ["src"],
+        "function": "runtime_metadata|sequence"
+        }
 
 
 
