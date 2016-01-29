@@ -5,8 +5,8 @@ require 'fileutils'
 fetch_gems = true
 repo_gems = [
   'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_base/s3.zip',
-  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_metadata/v0.0.4.zip',
-  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_downloader_csv/v0.0.1.zip'
+  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_metadata/v0.0.6.zip',
+  'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_downloader_csv/v0.0.2.zip'
 ]
 if fetch_gems
   repo_gems.each do |repo_gem|
@@ -26,5 +26,5 @@ end
 
 # Bundler hack
 require 'bundler/cli'
-Bundler::CLI.new.invoke(:install, [],:path => "gems",:jobs => 4,:deployment => true)
+Bundler::CLI.new.invoke(:install, [],:path => "gems",:jobs => 4,:deployment => false)
 
