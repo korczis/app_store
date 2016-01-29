@@ -4,6 +4,10 @@ require 'fileutils'
 
 debug_install = true if !$SCRIPT_PARAMS.nil? and $SCRIPT_PARAMS.include?("DEBUG_INSTALL")
 
+$SCRIPT_PARAMS.each_pair do |key,value|
+  STDERR.puts "#{key}:#{value}"
+end
+
 postfix = debug_install ? "2>&1": "1>/dev/null"
 
 package = 'https://gdc-ms-ruby-packages.s3.amazonaws.com/ads_integrator_brick/v0.0.10.zip'
