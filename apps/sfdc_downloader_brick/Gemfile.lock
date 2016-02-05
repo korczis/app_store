@@ -7,9 +7,9 @@ PATH
       gooddata
 
 PATH
-  remote: gooddata_connectors_downloader_salesforce-0.0.2
+  remote: gooddata_connectors_downloader_salesforce-0.0.3
   specs:
-    gooddata_connectors_downloader_salesforce (0.0.2)
+    gooddata_connectors_downloader_salesforce (0.0.3)
       gooddata
       restforce
       salesforce_bulk_query

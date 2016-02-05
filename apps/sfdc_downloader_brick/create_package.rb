@@ -8,7 +8,7 @@ repo_gems = [
     'https://github.com/gooddata/salesforce_bulk_query/archive/master.zip',
     'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_base/s3.zip',
     'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_metadata/v0.0.6.zip',
-    'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_downloader_salesforce/v0.0.2.zip'
+    'https://gdc-ms-ruby-packages.s3.amazonaws.com/gooddata_connectors_downloader_salesforce/v0.0.3.zip'
 ]
 
 if fetch_gems
