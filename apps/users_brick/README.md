@@ -156,7 +156,7 @@ The process takes a data source synchronizes the organization. That is it.
   	{
   	  "sync_mode": "add_to_organization",
   	  "organization": "organization_name",
-      "inut_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" }
+          "input_source": { "type": "web", "url": "https://gist.githubusercontent.com/fluke777/4005f6d99e9a8c6a9c90/raw/63d2e58dabea89cc2953a690adb5d74b492a184f/domain_users.csv" }
     }
 
 ### Sync project
