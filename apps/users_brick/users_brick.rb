@@ -127,9 +127,11 @@ module GoodData
         counts.each do |category, count|
           puts "There were #{count} events of type #{category}"
         end
-        errors = results.select { |r| r[:type] == :error }
+        errors = results.select { |r| r[:type] == :error || r[:type] == :failed }
         return if errors.empty?
 
+        puts "Printing 10 first errors"
+        puts "========================"
         pp errors.take(10)
         fail 'There was an error syncing users'
       end
