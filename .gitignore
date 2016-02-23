@@ -1,5 +1,36 @@
-.bundle
-bin
+## MAC OS
 .DS_Store
-*.pdf
-*.csv
+
+## TEXTMATE
+*.tmproj
+tmtags
+
+## EMACS
+*~
+\#*
+.\#*
+
+## VIM
+*.swp
+
+## IDEA
+.idea/
+
+## PROJECT::GENERAL
+.bundle
+coverage
+/rdoc
+/doc
+pkg
+
+## PROJECT::SPECIFIC
+Gemfile.lock
+
+# YARD
+.yardoc/
+
+# Local scripts
+.scripts/
+
+# Temp files
+tmp/
