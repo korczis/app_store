@@ -1,6 +1,5 @@
 require 'json'
 require 'json-schema'
-require 'pry'
 require 'pp'
 require 'fileutils'
 require 'pathname'

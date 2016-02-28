@@ -1,15 +1,7 @@
 source 'https://rubygems.org'
 
-gem 'gooddata', :git => 'https://github.com/gooddata/gooddata-ruby.git'
-
-gem 'twitter'
-gem 'pony'
-gem 'terminal-table'
-gem 'json'
+gem 'gooddata', '0.6.25'
 gem 'json-schema'
-gem 'activesupport'
-gem 'timecop'
-gem 'restforce'
-gem 'pry'
+gem 'terminal-table'
 gem 'rake'
 gem 'rspec'
