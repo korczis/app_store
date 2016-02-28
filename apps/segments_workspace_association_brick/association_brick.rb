@@ -16,7 +16,7 @@ module GoodData
       def call(params)
         client = params['GDC_GD_CLIENT'] || fail('client needs to be passed into a brick as "GDC_GD_CLIENT"')
         domain_name = params['organization'] || params['domain']
-        fail 'organizatio has to be defined' unless domain_name
+        fail 'organization has to be defined' unless domain_name
 
         fail 'input_source has to be defined' unless params['input_source']
         data_source = GoodData::Helpers::DataSource.new(params['input_source'])
