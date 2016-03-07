@@ -1,0 +1,24 @@
+{
+  "name"       : "segment_synchronization_brick",
+  "version"    : "0.0.1",
+  "category"   : "lcm_tools",
+  "language"   : "ruby",
+  "tags"       : "ruby segment synchronization model",
+  "description" : "The segment snchronization brick allows you to synchronize segments.",
+  "created"    : "",
+  "is_live"    : true,
+  "parameters" : [
+    {
+      "name"        : "organization",
+      "description" : "GoodData organization name",
+      "type"        : "string",
+      "mandatory"   : true
+    },
+    {
+      "name"        : "segment",
+      "description" : "You can specify specific segment to update. If not filled in all segments will be updated.",
+      "type"        : "string",
+      "mandatory"   : false
+    }
+  ]
+}
