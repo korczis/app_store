@@ -1,0 +1,42 @@
+{
+  "name"       : "segments_workspace_association_brick",
+  "version"    : "0.0.1",
+  "category"   : "lcm_tools",
+  "language"   : "ruby",
+  "tags"       : "lcm",
+  "description" : "Brick allows data driven creation of clients (segment - workspace association)",
+  "created": "1-05-2015",
+  "is_live"    : true,
+   "author"   : {
+     "name" : "Tomas Svarovsky",
+     "email": "svarovsky@gooddata.com"
+   },
+  "parameters" : [
+    {
+      "name"          : "client_id_column",
+      "description"   : "Specifies the name of the column where the client ids will reside. If not present default value is used.",
+      "type"          : "string",
+      "mandatory"     : false,
+      "default_value" : "client_id"
+    },
+    {
+      "name"          : "segment_id_column",
+      "description"   : "Specifies the name of the column where the segment ids will reside. If not present default value is used.",
+      "type"          : "string",
+      "mandatory"     : false,
+      "default_value" : "segment_id"
+    },
+    {
+      "name"        : "project_id_column",
+      "description" : "Specifies the name of the column where the project ids will reside. If not present default value is used. This is useful only in special circumstances usually you want to leave this blank and not specify the projects at all.",
+      "type"        : "string",
+      "mandatory"   : false
+    },
+    {
+      "name"        : "technical_client",
+      "description" : "Allows you to specify list of clients that will be ignored. This serves to whitelist technical clients that do not have business impact on things and are unlikely to come from the customer as part of data uploads. See documentation for usage examples.",
+      "type"        : "string",
+      "mandatory"   : false
+    }
+  ]
+}
