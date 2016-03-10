@@ -4,6 +4,16 @@ require 'pp'
 require 'fileutils'
 require 'pathname'
 
+begin
+  require 'rspec/core/rake_task'
+
+  RSpec::Core::RakeTask.new(:spec)
+
+  task :default => :spec
+rescue LoadError
+  # no rspec available
+end
+
 # Schema for new Bricks.
 brick_info_schema = {
   "type" => "object",
