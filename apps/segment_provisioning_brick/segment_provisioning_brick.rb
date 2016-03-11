@@ -21,6 +21,19 @@ module GoodData::Bricks
 
       res = domain.provision_client_projects.group_by { |r| r[:status] }
 
+      created_projects = res['CREATED'] || []
+      created_projects.each do |r|
+        c = domain.clients(r.id)
+        segment = c.segment
+        project = client.projects(r.project_uri)
+        GoodData::Project.transfer_etl(client, segment, project)
+        project.set_metadata('GOODOT_CUSTOM_PROJECT_ID', c.id)
+        project.schedules.peach do |s|
+          s.update_params({ 'GOODOT_CUSTOM_PROJECT_ID' => c.id })
+          s.save
+        end
+      end
+
       rows = res.keys.map do |result|
         [result, res[result].length]
       end
