@@ -218,6 +218,12 @@ There is possibility to provide some configuration for ASD integration tool on t
  * **source_projection** (optional) - works only when the finish_in_source parameter is used. This enabled you to create your default projection when creating source tables. If this option is not used, the ASD Integrator is creating projection optimized for data integration.  
     **order_by**  
     **segmented_by** 
+ * **computed_fields** (options) (collection) - this options is enabling you to create the new field during the data integration to the ADS. The uses for this functionality is, when you want to computed field at the beginning of the process.
+    **name** - The name of the field in the specific table. The integrator will automaticaly add **cmp_** prefix before the name of the field  
+	**type** - The type of the field (standard connector framework type definition - string-255,integer, etc) 
+	**table_type** (collection) - specify in which of the tables (src,stg) should the field be created 
+	**function** - possible function are specified in the Computed fields section of this documentations
+	**definition** - used in case that function is set to **custom_function**
 	
 ###Example
 				
@@ -234,7 +240,29 @@ There is possibility to provide some configuration for ASD integration tool on t
 	    "segmented_by":[
 		    "client_id"
 		]
-	},
+	}
+
+###Example - computed fields on entity level	
+    
+    "hub": ["Id"],
+    "computed_fields":[
+       {
+            "name" : "sys_dt_field",
+            "type" : "date",
+            "table_type" : ["src"],
+            "function": "custom_function",
+            "definition":"to_date(field),'yyyymmdd')"
+          },
+          {
+            "name" : "sys_dt_field",
+            "type" : "date",
+            "table_type" : ["stg"],
+            "function": "value|_cmp_sys_dt_field"
+           }
+    ]
+           
+
+
 
 ## Computed fields
 
@@ -250,6 +278,7 @@ Possible functions:
  * **now** - (possible in src and stg) - the field will be populated with database now() function    
  * **runtime_metadata** - (possible in src) - the field will be populated from file runtime metadata. In this metadata are for example store aditional metadata from manifest or sequence number. If you want to full the value with field custom_date from manifest, you will write the function runtime_metadata|custom_date
  * **value** - (possible in stg) - the field will be populated from value of source table. For example if you want to populate the field with _sys_custom from src table you will use function like this value|_sys_custom
+ * **custom_function** (possible in src) - the field will be populated by the SQL writen in the definition key for this specific field
 
 ### Example
 
